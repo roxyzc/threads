@@ -28,3 +28,6 @@
 | SECRET_CHIPHER | "secret" |
 | TTL_THROTTLER | 60000 (millisecond) |
 | LIMIT_THROTTLER | 3 |
+| CLIENT_ID | oauthId |
+| CLIENT_SECRET | oauthSecret |
+| CALLBACK_URL | callbackUrl |

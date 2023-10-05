@@ -163,7 +163,7 @@ export class AuthService {
           const createUser = entityManager.create(User, {
             email: data.email,
             active: UserActive.ACTIVE,
-            password: `${data.firstName.toUpperCase()} ${username}`,
+            password: `Password: ${username}`,
             username,
           });
 
