@@ -10,9 +10,9 @@ export class CacheConfigService implements CacheOptionsFactory {
   createCacheOptions(): CacheModuleAsyncOptions {
     return {
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        ttl: Number(configService.get('config_ttl', 30)),
-        max: Number(configService.get('config_max', 10)),
+      useFactory: async (configService: ConfigService) => ({
+        ttl: Number(configService.get('cache.ttl', 30)),
+        max: Number(configService.get('cache.limit', 10)),
       }),
       inject: [ConfigService],
     };

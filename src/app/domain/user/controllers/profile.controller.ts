@@ -16,8 +16,8 @@ import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { UserRoles } from 'src/app/entities/user.entity';
 import { UpdateProfileDto } from '../dtos/update-profile.dto';
 import { HttpResponse } from '../../interfaces/response.interface';
-import { Profile } from 'src/app/entities/profile.entity';
 import { Throttle } from '@nestjs/throttler';
+import { ResponseProfile } from '../dtos/response-profile.dto';
 
 @Controller('profile')
 export class ProfileController {
@@ -29,7 +29,7 @@ export class ProfileController {
   @Get(':id')
   async getProfile(
     @Param('id', ParseUUIDPipe) id: string,
-  ): Promise<HttpResponse & { data: Profile }> {
+  ): Promise<HttpResponse & { data: ResponseProfile }> {
     const profile = await this.profileService.getProfile(id);
     return {
       message: 'Ok',

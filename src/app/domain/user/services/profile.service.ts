@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User, UserActive } from 'src/app/entities/user.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { ResponseProfile } from '../dtos/response-profile.dto';
 
 interface CreateProfile {
   firstName: string;
@@ -70,21 +71,23 @@ export class ProfileService {
     return findProfile;
   }
 
-  public async getProfile(userId: string): Promise<Profile> {
+  public async getProfile(userId: string): Promise<ResponseProfile> {
     try {
-      const data = await this.profileRepository
+      const findProfile = await this.profileRepository
         .createQueryBuilder('profile')
         .select('profile.*')
         .where('profile.userId = :userId', { userId })
         .getRawOne();
 
-      if (!data) {
+      if (!findProfile) {
         throw new NotFoundException('Profile not found');
       }
 
+      const data = new ResponseProfile(findProfile);
       await this.cacheManager.set(`profile=${userId}`, data);
       return data;
     } catch (error) {
+      console.log(error.message);
       throw error;
     }
   }

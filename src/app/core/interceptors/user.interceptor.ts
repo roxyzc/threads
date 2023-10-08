@@ -11,10 +11,10 @@ export class UserInterceptor implements NestInterceptor {
     const { user, params } = context.switchToHttp().getRequest();
     if (user && user.userId && user.role) {
       if (user.userId !== params.id && user.role !== UserRoles.ADMIN) {
-        throw new ForbiddenException();
+        throw new ForbiddenException('Request invalid');
       }
     } else {
-      throw new ForbiddenException();
+      throw new ForbiddenException('Request invalid');
     }
 
     return next.handle();
