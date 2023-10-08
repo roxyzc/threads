@@ -1,12 +1,15 @@
 import { Expose } from 'class-transformer';
 import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsAlphaAndSpace } from 'src/app/core/decorators/IsAlphaAndSpace.decorator';
 import { GENDER } from 'src/app/entities/profile.entity';
 
 export class CreateProfileDto {
   @IsString()
+  @IsAlphaAndSpace()
   firstName: string;
 
   @IsString()
+  @IsAlphaAndSpace()
   lastName: string;
 
   @Expose()

@@ -41,9 +41,11 @@ export class UserService {
       return await queryBuilder.getRawOne();
     }
 
-    return await queryBuilder
+    const data = await queryBuilder
       .leftJoin('user.token', 'token')
       .addSelect(['token.accessToken', 'token.tokenId'])
       .getOne();
+
+    return data;
   }
 }

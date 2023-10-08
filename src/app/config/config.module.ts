@@ -3,6 +3,7 @@ import config from './index';
 import { ConfigModule } from '@nestjs/config';
 import { DatabaseModule } from './database/database.module';
 import { RateLimiterModule } from './rateLimiter/rateLimiter.module';
+import { CacheConfigModule } from './cache/cache.module';
 
 const envFile =
   process.env.NODE_ENV === 'production'
@@ -20,6 +21,7 @@ const envFile =
     }),
     DatabaseModule,
     RateLimiterModule,
+    CacheConfigModule,
   ],
 })
 export class AppConfigModule {}
