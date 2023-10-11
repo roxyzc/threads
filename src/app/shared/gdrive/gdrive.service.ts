@@ -70,19 +70,53 @@ export class GdriveService {
     });
   }
 
-  saveFile(file: any, folderId: string) {
+  // async getFile(fileId: string) {
+  //   const response = await this.driveClient.files.get(
+  //     { fileId: fileId, alt: 'media' },
+  //     { responseType: 'stream' },
+  //   );
+
+  //   const chunks: Buffer[] = [];
+  //   return new Promise<Buffer>((resolve, reject) => {
+  //     response.data
+  //       .on('data', (chunk) => chunks.push(Buffer.from(chunk)))
+  //       .on('end', () => resolve(Buffer.concat(chunks)))
+  //       .on('error', (error) => reject(error));
+  //   });
+  // }
+
+  async getFileUrl(fileId: string): Promise<string> {
+    const response = await this.driveClient.files.get({
+      fileId,
+      fields: 'webViewLink',
+    });
+
+    const imageUrl = response.data.webViewLink;
+    return imageUrl;
+  }
+
+  async saveFile(file: Express.Multer.File, folderId: string) {
     const bufferStream = new stream.PassThrough();
     bufferStream.end(file.buffer);
-    console.log(file);
-    return this.driveClient.files.create({
+    const createdFile = await this.driveClient.files.create({
       requestBody: {
         name: file.originalname,
         parents: folderId ? [folderId] : [],
       },
       media: {
-        mimeType: file.mimeType,
+        mimeType: file.mimetype,
         body: bufferStream,
       },
     });
+
+    await this.driveClient.permissions.create({
+      fileId: createdFile.data.id,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+
+    return createdFile.data.id;
   }
 }

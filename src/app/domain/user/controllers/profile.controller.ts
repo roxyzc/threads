@@ -9,6 +9,8 @@ import {
   Patch,
   HttpStatus,
   UploadedFile,
+  Inject,
+  Param,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -17,19 +19,23 @@ import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { UserRoles } from 'src/app/entities/user.entity';
 import { UpdateProfileDto } from '../dtos/update-profile.dto';
 import { HttpResponse } from '../../interfaces/response.interface';
-import { Throttle } from '@nestjs/throttler';
+import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import * as stream from 'stream';
+import { CacheInterceptor, CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
 
 @Controller('profile')
 export class ProfileController {
-  constructor(private readonly profileService: ProfileService) {}
+  constructor(
+    private readonly profileService: ProfileService,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+  ) {}
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
   @Throttle({ default: { limit: 10, ttl: 30000 } })
-  @Get('')
+  @Get()
   async getProfile(
     @Query('id', ParseUUIDPipe) id: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
@@ -43,7 +49,7 @@ export class ProfileController {
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
-  @Post('')
+  @Post()
   async createProfile(
     @Query('id', ParseUUIDPipe) id: string,
     @Body() body: CreateProfileDto,
@@ -57,7 +63,7 @@ export class ProfileController {
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
-  @Patch('')
+  @Patch()
   async updateProfile(
     @Query('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateProfileDto,
@@ -72,11 +78,20 @@ export class ProfileController {
   @Post('upload-image')
   @UseInterceptors(FileInterceptor('file'))
   async sendProfile(@UploadedFile() file: Express.Multer.File) {
-    // const bufferStream = new stream.PassThrough();
-    // const fileName = file.originalname;
-    // const filePath = file.buffer;
-    // const fileMimeType = file.mimetype;
-    await this.profileService.sendImage(file);
-    return;
+    const data = await this.profileService.sendImage(file);
+    return data;
+  }
+
+  @SkipThrottle()
+  @UseInterceptors(CacheInterceptor)
+  @Get(':fileId')
+  async getImage(@Param('fileId') fileId: string) {
+    const data = await this.profileService.getFile(fileId);
+    await this.cacheManager.set(`image(${fileId})`, data);
+
+    return data;
   }
 }
+
+// res.setHeader('Content-Type', 'image/jpeg');
+// res.send(imageBuffer);

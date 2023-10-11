@@ -6,7 +6,6 @@ import { ExceptionsFilter } from './app/core/filters/exceptions.filter';
 import { RoleGuard } from './app/core/guards/roles.guard';
 import { TokenModule } from './app/shared/token/token.module';
 import { RateLimiterGuard } from './app/core/guards/rateLimiter.guard';
-import { CacheInterceptor } from '@nestjs/cache-manager';
 
 @Module({
   imports: [AppConfigModule, DomainModule, TokenModule],
@@ -26,10 +25,6 @@ import { CacheInterceptor } from '@nestjs/cache-manager';
     {
       provide: APP_INTERCEPTOR,
       useClass: ClassSerializerInterceptor,
-    },
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: CacheInterceptor,
     },
   ],
 })

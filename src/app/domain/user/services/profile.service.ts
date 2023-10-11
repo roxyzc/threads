@@ -73,7 +73,7 @@ export class ProfileService {
     return findProfile;
   }
 
-  public async sendImage(file: any) {
+  public async sendImage(file: Express.Multer.File) {
     try {
       const folderName = 'Picture';
 
@@ -82,16 +82,17 @@ export class ProfileService {
         folder = await this.gdriveService.createFolder(folderName);
       }
 
-      console.log('kesini');
-      const { data } = await this.gdriveService.saveFile(file, folder.id);
-      console.log('kesini2');
-
-      console.log(data.id);
-      console.info('File uploaded successfully!');
+      const driveId = await this.gdriveService.saveFile(file, folder.id);
+      return driveId;
     } catch (error) {
       console.error(error.message);
       throw error;
     }
+  }
+
+  public async getFile(fileId: string) {
+    const url = await this.gdriveService.getFileUrl(fileId);
+    return url;
   }
 
   public async getProfile(userId: string): Promise<ResponseProfile> {
