@@ -6,9 +6,10 @@ import { User } from 'src/app/entities/user.entity';
 import { ProfileController } from './controllers/profile.controller';
 import { ProfileService } from './services/profile.service';
 import { Profile } from 'src/app/entities/profile.entity';
+import { GdriveModule } from 'src/app/shared/gdrive/gdrive.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Profile])],
+  imports: [TypeOrmModule.forFeature([User, Profile]), GdriveModule],
   providers: [UserSubscriber, UserService, ProfileService],
   controllers: [ProfileController],
   exports: [UserService],

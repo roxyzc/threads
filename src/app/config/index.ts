@@ -32,4 +32,10 @@ export default () => ({
     clientSecret: process.env.CLIENT_SECRET,
     callbackURL: process.env.CALLBACK_URL,
   },
+  drive: {
+    clientId: process.env.GOOGLE_DRIVE_CLIENT_ID,
+    clientSecret: process.env.GOOGLE_DRIVE_CLIENT_SECRET,
+    refreshToken: process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
+    redirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI,
+  },
 });

@@ -4,10 +4,8 @@ import { GENDER } from 'src/app/entities/profile.entity';
 export class ResponseProfile {
   profileId: string;
 
-  @Exclude()
   firstName: string;
 
-  @Exclude()
   lastName: string;
 
   fullName: string;

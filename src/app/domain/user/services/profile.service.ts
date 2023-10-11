@@ -13,6 +13,7 @@ import { User, UserActive } from 'src/app/entities/user.entity';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { ResponseProfile } from '../dtos/response-profile.dto';
+import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 
 interface CreateProfile {
   firstName: string;
@@ -34,6 +35,7 @@ export class ProfileService {
     private readonly profileRepository: Repository<Profile>,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly entityManager: EntityManager,
+    private readonly gdriveService: GdriveService,
   ) {}
 
   private async lockUser(userId: string, entityManager: EntityManager) {
@@ -55,7 +57,7 @@ export class ProfileService {
     return findUser;
   }
 
-  private async LockProfile(userId: string, entityManager: EntityManager) {
+  private async lockProfile(userId: string, entityManager: EntityManager) {
     const findProfile = await entityManager
       .getRepository(Profile)
       .createQueryBuilder('profile')
@@ -69,6 +71,27 @@ export class ProfileService {
     }
 
     return findProfile;
+  }
+
+  public async sendImage(file: any) {
+    try {
+      const folderName = 'Picture';
+
+      let folder = await this.gdriveService.searchFolder(folderName);
+      if (!folder) {
+        folder = await this.gdriveService.createFolder(folderName);
+      }
+
+      console.log('kesini');
+      const { data } = await this.gdriveService.saveFile(file, folder.id);
+      console.log('kesini2');
+
+      console.log(data.id);
+      console.info('File uploaded successfully!');
+    } catch (error) {
+      console.error(error.message);
+      throw error;
+    }
   }
 
   public async getProfile(userId: string): Promise<ResponseProfile> {
@@ -125,7 +148,7 @@ export class ProfileService {
   ): Promise<void> {
     try {
       await this.entityManager.transaction(async (entityManager) => {
-        const profile = await this.LockProfile(userId, entityManager);
+        const profile = await this.lockProfile(userId, entityManager);
 
         if (
           (payload.gender === profile.gender && !payload?.photo) ||

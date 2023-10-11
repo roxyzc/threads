@@ -2,12 +2,13 @@ import {
   Controller,
   UseInterceptors,
   Get,
-  Param,
+  Query,
   ParseUUIDPipe,
   Post,
   Body,
   Patch,
   HttpStatus,
+  UploadedFile,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -18,6 +19,8 @@ import { UpdateProfileDto } from '../dtos/update-profile.dto';
 import { HttpResponse } from '../../interfaces/response.interface';
 import { Throttle } from '@nestjs/throttler';
 import { ResponseProfile } from '../dtos/response-profile.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as stream from 'stream';
 
 @Controller('profile')
 export class ProfileController {
@@ -26,9 +29,9 @@ export class ProfileController {
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
   @Throttle({ default: { limit: 10, ttl: 30000 } })
-  @Get(':id')
+  @Get('')
   async getProfile(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Query('id', ParseUUIDPipe) id: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
     const profile = await this.profileService.getProfile(id);
     return {
@@ -40,9 +43,9 @@ export class ProfileController {
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
-  @Post(':id')
+  @Post('')
   async createProfile(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Query('id', ParseUUIDPipe) id: string,
     @Body() body: CreateProfileDto,
   ): Promise<HttpResponse> {
     await this.profileService.createProfile(id, body);
@@ -54,9 +57,9 @@ export class ProfileController {
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
-  @Patch(':id')
+  @Patch('')
   async updateProfile(
-    @Param('id', ParseUUIDPipe) id: string,
+    @Query('id', ParseUUIDPipe) id: string,
     @Body() body: UpdateProfileDto,
   ): Promise<HttpResponse> {
     await this.profileService.updateProfile(id, body);
@@ -64,5 +67,16 @@ export class ProfileController {
       message: 'Profile updated successfully',
       statusCode: HttpStatus.OK,
     };
+  }
+
+  @Post('upload-image')
+  @UseInterceptors(FileInterceptor('file'))
+  async sendProfile(@UploadedFile() file: Express.Multer.File) {
+    // const bufferStream = new stream.PassThrough();
+    // const fileName = file.originalname;
+    // const filePath = file.buffer;
+    // const fileMimeType = file.mimetype;
+    await this.profileService.sendImage(file);
+    return;
   }
 }
