@@ -9,6 +9,7 @@ export class ResponseProfile {
   lastName: string;
 
   fullName: string;
+
   gender: GENDER;
 
   @Expose({ name: 'image' })

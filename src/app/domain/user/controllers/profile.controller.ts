@@ -40,6 +40,7 @@ export class ProfileController {
     @Query('id', ParseUUIDPipe) id: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
     const profile = await this.profileService.getProfile(id);
+    await this.cacheManager.set(`profile=${id}`, profile);
     return {
       message: 'Ok',
       statusCode: HttpStatus.OK,
@@ -65,30 +66,36 @@ export class ProfileController {
   @UseInterceptors(UserInterceptor)
   @Patch()
   async updateProfile(
-    @Query('id', ParseUUIDPipe) id: string,
+    @Query('id', ParseUUIDPipe) userId: string,
     @Body() body: UpdateProfileDto,
   ): Promise<HttpResponse> {
-    await this.profileService.updateProfile(id, body);
+    await this.profileService.updateProfile(userId, body);
     return {
       message: 'Profile updated successfully',
       statusCode: HttpStatus.OK,
     };
   }
 
-  @Post('upload-image')
+  @Post('upload')
   @UseInterceptors(FileInterceptor('file'))
-  async sendProfile(@UploadedFile() file: Express.Multer.File) {
-    const data = await this.profileService.sendImage(file);
-    return data;
+  async sendProfile(
+    @Query('id', ParseUUIDPipe) userId: string,
+    @UploadedFile() file: Express.Multer.File,
+  ): Promise<HttpResponse & { url: string; fileId: string }> {
+    const data = await this.profileService.sendPhotoProfile(file, userId);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'successfully uploaded',
+      ...data,
+    };
   }
 
   @SkipThrottle()
   @UseInterceptors(CacheInterceptor)
   @Get(':fileId')
   async getImage(@Param('fileId') fileId: string) {
-    const data = await this.profileService.getFile(fileId);
-    await this.cacheManager.set(`image(${fileId})`, data);
-
+    const data = await this.profileService.getPhotoProfile(fileId);
+    await this.cacheManager.set(`image=${fileId}`, data);
     return data;
   }
 }

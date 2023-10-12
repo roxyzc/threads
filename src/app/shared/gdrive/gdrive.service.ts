@@ -70,21 +70,6 @@ export class GdriveService {
     });
   }
 
-  // async getFile(fileId: string) {
-  //   const response = await this.driveClient.files.get(
-  //     { fileId: fileId, alt: 'media' },
-  //     { responseType: 'stream' },
-  //   );
-
-  //   const chunks: Buffer[] = [];
-  //   return new Promise<Buffer>((resolve, reject) => {
-  //     response.data
-  //       .on('data', (chunk) => chunks.push(Buffer.from(chunk)))
-  //       .on('end', () => resolve(Buffer.concat(chunks)))
-  //       .on('error', (error) => reject(error));
-  //   });
-  // }
-
   async getFileUrl(fileId: string): Promise<string> {
     const response = await this.driveClient.files.get({
       fileId,
@@ -94,6 +79,8 @@ export class GdriveService {
     const imageUrl = response.data.webViewLink;
     return imageUrl;
   }
+
+  // <img src="https://drive.google.com/uc?id=1b3MwYbi8osTZgPs8QbNkaGHuAWI00i60"/>
 
   async saveFile(file: Express.Multer.File, folderId: string) {
     const bufferStream = new stream.PassThrough();
@@ -118,5 +105,12 @@ export class GdriveService {
     });
 
     return createdFile.data.id;
+  }
+
+  async deleteFile(fileId: string) {
+    await this.driveClient.files.delete({
+      fileId,
+    });
+    return;
   }
 }
