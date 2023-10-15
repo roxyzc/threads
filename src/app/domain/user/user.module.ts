@@ -8,9 +8,14 @@ import { ProfileService } from './services/profile.service';
 import { Profile } from 'src/app/entities/profile.entity';
 import { GdriveModule } from 'src/app/shared/gdrive/gdrive.module';
 import { Image } from 'src/app/entities/image.entity';
+import { CacheModule } from 'src/app/shared/cache/cache.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Image, Profile]), GdriveModule],
+  imports: [
+    TypeOrmModule.forFeature([User, Image, Profile]),
+    GdriveModule,
+    CacheModule,
+  ],
   providers: [UserSubscriber, UserService, ProfileService],
   controllers: [ProfileController],
   exports: [UserService],

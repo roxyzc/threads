@@ -10,8 +10,6 @@ import {
   Get,
   BadRequestException,
   Delete,
-  UseInterceptors,
-  Inject,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from '../services/auth.service';
@@ -24,15 +22,14 @@ import { ResetPasswordDto } from '../dtos/resetPassword.dto';
 import { ResendUserVerificationDto } from '../dtos/verifyUser.dto';
 import { ResponseAuth, ResponseAuthRaw } from '../dtos/response.dto';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
-import { CacheInterceptor, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { CacheService } from 'src/app/shared/cache/cache.service';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly cacheService: CacheService,
   ) {}
 
   @Throttle({ default: { limit: 1, ttl: 60000 } })
@@ -114,14 +111,24 @@ export class AuthController {
   }
 
   @SkipThrottle()
-  @UseInterceptors(CacheInterceptor)
   @Get('/me')
   async me(
     @Req() request: Request,
   ): Promise<HttpResponse & { data: ResponseAuthRaw }> {
     const token = request.cookies['token'];
+    const cacheKey = `me:${token}`;
+
+    const cachedData = await this.cacheService.get<ResponseAuthRaw>(cacheKey);
+    if (cachedData) {
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Ok',
+        data: cachedData,
+      };
+    }
+
     const data = await this.authService.me(token);
-    await this.cacheManager.set(`me(${token})`, data);
+    await this.cacheService.set(`me:${token}`, data, 30);
     return {
       statusCode: HttpStatus.OK,
       message: 'Ok',

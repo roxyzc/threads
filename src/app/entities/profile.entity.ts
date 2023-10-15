@@ -33,6 +33,9 @@ export class Profile {
   @Column({ type: 'enum', default: GENDER.OTHER, enum: GENDER })
   gender: GENDER;
 
+  @Column({ type: 'varchar', nullable: true, length: 255 })
+  url: string;
+
   @OneToOne(() => Image, (image) => image.profile)
   @JoinColumn({ name: 'imageId' })
   photo?: Image;

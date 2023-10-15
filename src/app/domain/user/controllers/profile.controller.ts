@@ -9,8 +9,6 @@ import {
   Patch,
   HttpStatus,
   UploadedFile,
-  Inject,
-  Param,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -19,17 +17,16 @@ import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { UserRoles } from 'src/app/entities/user.entity';
 import { UpdateProfileDto } from '../dtos/update-profile.dto';
 import { HttpResponse } from '../../interfaces/response.interface';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
+import { Throttle } from '@nestjs/throttler';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CacheInterceptor, CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
+import { CacheService } from 'src/app/shared/cache/cache.service';
 
 @Controller('profile')
 export class ProfileController {
   constructor(
     private readonly profileService: ProfileService,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly cacheService: CacheService,
   ) {}
 
   @Roles(UserRoles.USER)
@@ -37,25 +34,43 @@ export class ProfileController {
   @Throttle({ default: { limit: 10, ttl: 30000 } })
   @Get()
   async getProfile(
-    @Query('id', ParseUUIDPipe) id: string,
+    @Query('id', ParseUUIDPipe) userId: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
-    const profile = await this.profileService.getProfile(id);
-    await this.cacheManager.set(`profile=${id}`, profile);
-    return {
-      message: 'Ok',
-      statusCode: HttpStatus.OK,
-      data: profile,
-    };
+    try {
+      const cacheKey = `profile=${userId}`;
+      const cacheProfile = await this.cacheService.get<ResponseProfile>(
+        cacheKey,
+      );
+
+      if (cacheProfile) {
+        return {
+          message: 'cached profile',
+          statusCode: HttpStatus.OK,
+          data: cacheProfile,
+        };
+      }
+
+      const profile = await this.profileService.getProfile(userId);
+      await this.cacheService.set(`profile=${userId}`, profile, 30);
+      return {
+        message: 'Ok',
+        statusCode: HttpStatus.OK,
+        data: profile,
+      };
+    } catch (err) {
+      console.error(err.message);
+      throw err;
+    }
   }
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
   @Post()
   async createProfile(
-    @Query('id', ParseUUIDPipe) id: string,
+    @Query('id', ParseUUIDPipe) userId: string,
     @Body() body: CreateProfileDto,
   ): Promise<HttpResponse> {
-    await this.profileService.createProfile(id, body);
+    await this.profileService.createProfile(userId, body);
     return {
       message: 'created profile successfully',
       statusCode: HttpStatus.CREATED,
@@ -76,8 +91,9 @@ export class ProfileController {
     };
   }
 
+  @Roles(UserRoles.USER)
+  @UseInterceptors(UserInterceptor, FileInterceptor('file'))
   @Post('upload')
-  @UseInterceptors(FileInterceptor('file'))
   async sendProfile(
     @Query('id', ParseUUIDPipe) userId: string,
     @UploadedFile() file: Express.Multer.File,
@@ -88,15 +104,6 @@ export class ProfileController {
       message: 'successfully uploaded',
       ...data,
     };
-  }
-
-  @SkipThrottle()
-  @UseInterceptors(CacheInterceptor)
-  @Get(':fileId')
-  async getImage(@Param('fileId') fileId: string) {
-    const data = await this.profileService.getPhotoProfile(fileId);
-    await this.cacheManager.set(`image=${fileId}`, data);
-    return data;
   }
 }
 

@@ -11,6 +11,7 @@ import { VerifyController } from './controllers/verify.controller';
 import { VerifyService } from './services/verify.service';
 import { GoogleStrategy } from './strategy/google.strategy';
 import { UserModule } from '../user/user.module';
+import { CacheModule } from 'src/app/shared/cache/cache.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { UserModule } from '../user/user.module';
     UserModule,
     TypeOrmModule.forFeature([User, Profile, Token]),
     MailModule,
+    CacheModule,
   ],
   providers: [AuthService, VerifyService, GoogleStrategy],
   controllers: [AuthController, VerifyController],

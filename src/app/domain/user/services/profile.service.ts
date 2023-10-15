@@ -22,6 +22,7 @@ interface CreateProfile {
 
 interface UpdateProfile {
   gender?: GENDER;
+  url?: string;
 }
 
 @Injectable()
@@ -68,6 +69,15 @@ export class ProfileService {
     return findProfile;
   }
 
+  private async getPhotoProfile(fileId: string) {
+    try {
+      const url = `https://drive.google.com/uc?id=${fileId}`;
+      return url;
+    } catch (error) {
+      throw error;
+    }
+  }
+
   public async sendPhotoProfile(file: Express.Multer.File, userId: string) {
     let fileId: string;
     try {
@@ -86,7 +96,7 @@ export class ProfileService {
           }
 
           fileId = await this.gdriveService.saveFile(file, folder.id);
-          const url = `https://drive.google.com/uc?id=${fileId}`;
+          const url = await this.getPhotoProfile(fileId);
           const createImage = entityManager.create(Image, { fileId, url });
           const image = await entityManager.save(createImage);
           await entityManager.update(
@@ -104,15 +114,6 @@ export class ProfileService {
     } catch (error) {
       await this.gdriveService.deleteFile(fileId);
       console.error(error.message);
-      throw error;
-    }
-  }
-
-  public async getPhotoProfile(fileId: string) {
-    try {
-      const url = `https://drive.google.com/uc?id=${fileId}`;
-      return url;
-    } catch (error) {
       throw error;
     }
   }

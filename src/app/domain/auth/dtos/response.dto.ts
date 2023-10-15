@@ -29,6 +29,7 @@ export class ResponseAuthRaw {
   username: string;
   active: UserActive;
   role: UserRoles;
+
   @Exclude()
   password: string;
 
