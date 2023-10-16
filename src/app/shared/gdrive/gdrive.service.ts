@@ -42,7 +42,7 @@ export class GdriveService {
     });
   }
 
-  createFolder(folderName: string): Promise<PartialDriveFile> {
+  public createFolder(folderName: string): Promise<PartialDriveFile> {
     return this.driveClient.files.create({
       resource: {
         name: folderName,
@@ -52,7 +52,7 @@ export class GdriveService {
     });
   }
 
-  searchFolder(folderName: string): Promise<PartialDriveFile | null> {
+  public searchFolder(folderName: string): Promise<PartialDriveFile | null> {
     return new Promise((resolve, reject) => {
       this.driveClient.files.list(
         {
@@ -70,7 +70,7 @@ export class GdriveService {
     });
   }
 
-  async getFileUrl(fileId: string): Promise<string> {
+  public async getFileUrl(fileId: string): Promise<string> {
     const response = await this.driveClient.files.get({
       fileId,
       fields: 'webViewLink',
@@ -80,11 +80,10 @@ export class GdriveService {
     return imageUrl;
   }
 
-  // <img src="https://drive.google.com/uc?id=1b3MwYbi8osTZgPs8QbNkaGHuAWI00i60"/>
-
-  async saveFile(file: Express.Multer.File, folderId: string) {
+  public async saveFile(file: Express.Multer.File, folderId: string) {
     const bufferStream = new stream.PassThrough();
     bufferStream.end(file.buffer);
+    console.log(file.buffer);
     const createdFile = await this.driveClient.files.create({
       requestBody: {
         name: file.originalname,
@@ -107,7 +106,35 @@ export class GdriveService {
     return createdFile.data.id;
   }
 
-  async deleteFile(fileId: string) {
+  public async updateFile(file: Express.Multer.File, fileId: string) {
+    const bufferStream = new stream.PassThrough();
+    bufferStream.end(file.buffer);
+
+    const updateFile = await this.driveClient.files.update({
+      media: {
+        mimeType: file.mimetype,
+        body: bufferStream,
+      },
+      fileId,
+      requestBody: {
+        name: file.originalname,
+      },
+    });
+
+    await this.driveClient.permissions.create({
+      fileId: updateFile.data.id,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+  }
+
+  public async deleteFile(fileId: string) {
+    if (!fileId) {
+      return;
+    }
+
     await this.driveClient.files.delete({
       fileId,
     });

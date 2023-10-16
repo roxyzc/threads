@@ -21,8 +21,8 @@ interface CreateProfile {
 }
 
 interface UpdateProfile {
-  gender?: GENDER;
-  url?: string;
+  gender: GENDER;
+  url: string;
 }
 
 @Injectable()
@@ -69,6 +69,22 @@ export class ProfileService {
     return findProfile;
   }
 
+  private async lockImage(fileId: string, entityManager: EntityManager) {
+    const findImage = await entityManager
+      .getRepository(Image)
+      .createQueryBuilder('image')
+      .select('image.*')
+      .where('image.fileId = :fileId', { fileId })
+      .setLock('pessimistic_write')
+      .getRawOne();
+
+    if (!findImage) {
+      throw new NotFoundException('Image not found');
+    }
+
+    return findImage;
+  }
+
   private async getPhotoProfile(fileId: string) {
     try {
       const url = `https://drive.google.com/uc?id=${fileId}`;
@@ -80,6 +96,7 @@ export class ProfileService {
 
   public async sendPhotoProfile(file: Express.Multer.File, userId: string) {
     let fileId: string;
+
     try {
       const folderName = 'Picture';
       let folder = await this.gdriveService.searchFolder(folderName);
@@ -90,7 +107,6 @@ export class ProfileService {
       const data = await this.entityManager.transaction(
         async (entityManager) => {
           const lockProfile = await this.lockProfile(userId, entityManager);
-
           if (lockProfile.imageId) {
             throw new ConflictException();
           }
@@ -113,7 +129,28 @@ export class ProfileService {
       return data;
     } catch (error) {
       await this.gdriveService.deleteFile(fileId);
-      console.error(error.message);
+      throw error;
+    }
+  }
+
+  public async updatePhotoProfile(file: Express.Multer.File, fileId: string) {
+    try {
+      await this.gdriveService.updateFile(file, fileId);
+    } catch (error) {
+      console.error(error);
+      throw error;
+    }
+  }
+
+  public async deletePhotoProfile(fileId: string): Promise<void> {
+    try {
+      await this.entityManager.transaction(async (entityManager) => {
+        await this.lockImage(fileId, entityManager);
+        await entityManager.delete(Image, { fileId });
+        await this.gdriveService.deleteFile(fileId);
+      });
+      return;
+    } catch (error) {
       throw error;
     }
   }
@@ -169,16 +206,11 @@ export class ProfileService {
 
   public async updateProfile(
     userId: string,
-    payload: UpdateProfile,
+    payload: Partial<UpdateProfile>,
   ): Promise<void> {
     try {
       await this.entityManager.transaction(async (entityManager) => {
         const profile = await this.lockProfile(userId, entityManager);
-
-        if (payload.gender === profile.gender) {
-          throw new BadRequestException('The data is the same as the profile.');
-        }
-
         try {
           await entityManager.update(
             Profile,

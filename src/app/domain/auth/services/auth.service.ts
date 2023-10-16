@@ -187,7 +187,16 @@ export class AuthService {
   public async me(token: string) {
     try {
       const payload = await this.tokenService.verifyToken(token);
-      const user = await this.userService.getUserById(payload.userId);
+      const user = await this.userService.getUserById(payload.userId, [
+        'user.userId',
+        'user.username',
+        'user.email',
+        'user.role',
+        'user.active',
+        'user.createdAt',
+        'user.updatedAt',
+      ]);
+
       if (!user) {
         throw new NotFoundException('user not found');
       }
@@ -197,10 +206,15 @@ export class AuthService {
         username: reverseSlug(user.username),
       });
     } catch (error) {
+      if (error instanceof UnauthorizedException) {
+        throw new UnauthorizedException('token invalid');
+      }
+
       if (error instanceof NotFoundException) {
         throw error;
       }
-      throw new UnauthorizedException('token invalid');
+
+      throw new BadRequestException(error.message);
     }
   }
 

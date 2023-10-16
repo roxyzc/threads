@@ -111,7 +111,7 @@ export class AuthController {
   }
 
   @SkipThrottle()
-  @Get('/me')
+  @Get('me')
   async me(
     @Req() request: Request,
   ): Promise<HttpResponse & { data: ResponseAuthRaw }> {

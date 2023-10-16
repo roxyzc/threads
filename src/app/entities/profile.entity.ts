@@ -4,7 +4,6 @@ import {
   PrimaryGeneratedColumn,
   OneToOne,
   JoinColumn,
-  Index,
 } from 'typeorm';
 import { User } from './user.entity';
 import { Image } from './image.entity';
@@ -27,7 +26,6 @@ export class Profile {
   lastName: string;
 
   @Column({ type: 'varchar', length: 100, nullable: false })
-  @Index('IFT_FullName', { fulltext: true })
   fullName: string;
 
   @Column({ type: 'enum', default: GENDER.OTHER, enum: GENDER })

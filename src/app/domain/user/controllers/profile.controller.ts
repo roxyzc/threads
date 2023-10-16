@@ -9,6 +9,8 @@ import {
   Patch,
   HttpStatus,
   UploadedFile,
+  Put,
+  ParseFilePipeBuilder,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -92,11 +94,23 @@ export class ProfileController {
   }
 
   @Roles(UserRoles.USER)
-  @UseInterceptors(UserInterceptor, FileInterceptor('file'))
+  @UseInterceptors(UserInterceptor, FileInterceptor('image'))
   @Post('upload')
-  async sendProfile(
+  async sendPhotoProfile(
     @Query('id', ParseUUIDPipe) userId: string,
-    @UploadedFile() file: Express.Multer.File,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /.*(jpg|webp|png|jpeg)/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 1000,
+        })
+        .build({
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file: Express.Multer.File,
   ): Promise<HttpResponse & { url: string; fileId: string }> {
     const data = await this.profileService.sendPhotoProfile(file, userId);
     return {
@@ -105,7 +119,32 @@ export class ProfileController {
       ...data,
     };
   }
-}
 
-// res.setHeader('Content-Type', 'image/jpeg');
-// res.send(imageBuffer);
+  @Roles(UserRoles.USER)
+  @UseInterceptors(UserInterceptor, FileInterceptor('image'))
+  @Put('upload')
+  async updatePhotoProfile(
+    @Query('id', ParseUUIDPipe) _userId: string,
+    @UploadedFile(
+      new ParseFilePipeBuilder()
+        .addFileTypeValidator({
+          fileType: /.*(jpg|webp|png|jpeg)/,
+        })
+        .addMaxSizeValidator({
+          maxSize: 1 * 1024 * 1024,
+        })
+        .build({
+          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+        }),
+    )
+    file: Express.Multer.File,
+    @Body() { fileId }: { fileId: string },
+  ): Promise<HttpResponse> {
+    await this.profileService.updatePhotoProfile(file, fileId);
+
+    return {
+      message: 'Photo profile updated successfully',
+      statusCode: HttpStatus.OK,
+    };
+  }
+}
