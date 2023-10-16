@@ -23,6 +23,8 @@ interface CreateProfile {
 interface UpdateProfile {
   gender: GENDER;
   url: string;
+  firstName: string;
+  lastName: string;
 }
 
 @Injectable()
@@ -137,7 +139,6 @@ export class ProfileService {
     try {
       await this.gdriveService.updateFile(file, fileId);
     } catch (error) {
-      console.error(error);
       throw error;
     }
   }
@@ -173,7 +174,6 @@ export class ProfileService {
       });
       return data;
     } catch (error) {
-      console.log(error.message);
       throw error;
     }
   }
@@ -211,11 +211,18 @@ export class ProfileService {
     try {
       await this.entityManager.transaction(async (entityManager) => {
         const profile = await this.lockProfile(userId, entityManager);
+        const fullName = payload.lastName
+          ? `${payload.firstName} ${payload.lastName}`
+          : `${payload.firstName}`;
         try {
           await entityManager.update(
             Profile,
             { profileId: profile.profileId },
-            payload,
+            {
+              ...payload,
+              lastName: payload?.lastName ?? null,
+              fullName: fullName,
+            },
           );
         } catch (error) {
           throw new BadRequestException(error.message);

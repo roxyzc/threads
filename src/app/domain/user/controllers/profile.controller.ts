@@ -23,6 +23,7 @@ import { Throttle } from '@nestjs/throttler';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CacheService } from 'src/app/shared/cache/cache.service';
+import { UpdatePhotoProfileDto } from '../dtos/update-photo-ptofile.dto';
 
 @Controller('profile')
 export class ProfileController {
@@ -86,6 +87,7 @@ export class ProfileController {
     @Query('id', ParseUUIDPipe) userId: string,
     @Body() body: UpdateProfileDto,
   ): Promise<HttpResponse> {
+    console.log(body);
     await this.profileService.updateProfile(userId, body);
     return {
       message: 'Profile updated successfully',
@@ -138,7 +140,7 @@ export class ProfileController {
         }),
     )
     file: Express.Multer.File,
-    @Body() { fileId }: { fileId: string },
+    @Body() { fileId }: UpdatePhotoProfileDto,
   ): Promise<HttpResponse> {
     await this.profileService.updatePhotoProfile(file, fileId);
 

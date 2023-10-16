@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { google } from 'googleapis';
 import { ConfigService } from '@nestjs/config';
 import * as stream from 'stream';
@@ -71,73 +71,89 @@ export class GdriveService {
   }
 
   public async getFileUrl(fileId: string): Promise<string> {
-    const response = await this.driveClient.files.get({
-      fileId,
-      fields: 'webViewLink',
-    });
+    try {
+      const response = await this.driveClient.files.get({
+        fileId,
+        fields: 'webViewLink',
+      });
 
-    const imageUrl = response.data.webViewLink;
-    return imageUrl;
+      const imageUrl = response.data.webViewLink;
+      return imageUrl;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 
   public async saveFile(file: Express.Multer.File, folderId: string) {
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(file.buffer);
-    console.log(file.buffer);
-    const createdFile = await this.driveClient.files.create({
-      requestBody: {
-        name: file.originalname,
-        parents: folderId ? [folderId] : [],
-      },
-      media: {
-        mimeType: file.mimetype,
-        body: bufferStream,
-      },
-    });
+    try {
+      const bufferStream = new stream.PassThrough();
+      bufferStream.end(file.buffer);
+      console.log(file.buffer);
+      const createdFile = await this.driveClient.files.create({
+        requestBody: {
+          name: file.originalname,
+          parents: folderId ? [folderId] : [],
+        },
+        media: {
+          mimeType: file.mimetype,
+          body: bufferStream,
+        },
+      });
 
-    await this.driveClient.permissions.create({
-      fileId: createdFile.data.id,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
-    });
+      await this.driveClient.permissions.create({
+        fileId: createdFile.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
 
-    return createdFile.data.id;
+      return createdFile.data.id;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 
   public async updateFile(file: Express.Multer.File, fileId: string) {
-    const bufferStream = new stream.PassThrough();
-    bufferStream.end(file.buffer);
+    try {
+      const bufferStream = new stream.PassThrough();
+      bufferStream.end(file.buffer);
 
-    const updateFile = await this.driveClient.files.update({
-      media: {
-        mimeType: file.mimetype,
-        body: bufferStream,
-      },
-      fileId,
-      requestBody: {
-        name: file.originalname,
-      },
-    });
+      const updateFile = await this.driveClient.files.update({
+        media: {
+          mimeType: file.mimetype,
+          body: bufferStream,
+        },
+        fileId,
+        requestBody: {
+          name: file.originalname,
+        },
+      });
 
-    await this.driveClient.permissions.create({
-      fileId: updateFile.data.id,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
-    });
+      await this.driveClient.permissions.create({
+        fileId: updateFile.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone',
+        },
+      });
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 
   public async deleteFile(fileId: string) {
-    if (!fileId) {
-      return;
-    }
+    try {
+      if (!fileId) {
+        return;
+      }
 
-    await this.driveClient.files.delete({
-      fileId,
-    });
-    return;
+      await this.driveClient.files.delete({
+        fileId,
+      });
+      return;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
   }
 }
