@@ -1,4 +1,5 @@
 import { Exclude, Expose } from 'class-transformer';
+import { GENDER, Profile } from 'src/app/entities/profile.entity';
 import { UserActive, UserRoles } from 'src/app/entities/user.entity';
 
 export class ResponseAuth {
@@ -29,9 +30,15 @@ export class ResponseAuthRaw {
   username: string;
   active: UserActive;
   role: UserRoles;
+  fullName: string;
+  gender: GENDER;
+  image: string;
 
   @Exclude()
   password: string;
+
+  @Exclude()
+  profile: Profile;
 
   @Expose({ name: 'created_at' })
   createdAt: number;

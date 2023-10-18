@@ -10,12 +10,27 @@ export class UserService {
   ) {}
 
   public async getUserById(userId: string, select?: string[]): Promise<User> {
-    const selectColumns = select || ['*'];
-    return this.userRepository
-      .createQueryBuilder()
-      .where('userId = :userId', { userId })
-      .select(selectColumns)
-      .getRawOne();
+    const selectColumns = select;
+    const user = this.userRepository
+      .createQueryBuilder('user')
+      .where('user.userId = :userId', { userId });
+
+    if (selectColumns && selectColumns.length > 0) {
+      user.select(selectColumns);
+    } else {
+      user.addSelect('user.*');
+    }
+
+    return await user
+      .leftJoin('user.profile', 'profile')
+      .leftJoin('profile.photo', 'image')
+      .addSelect([
+        'profile.fullName',
+        'profile.gender',
+        'profile.photo',
+        'image.url',
+      ])
+      .getOne();
   }
 
   public async getUserByUsernameOrEmail(

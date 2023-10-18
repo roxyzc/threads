@@ -18,12 +18,16 @@ export class UpdateProfileDto {
   @IsAlphaAndSpace()
   lastName?: string;
 
-  @IsEnum(GENDER)
   @IsOptional()
+  @IsEnum(GENDER)
   gender?: GENDER;
 
-  @IsUrl()
   @IsOptional()
+  @IsString()
+  bio?: string;
+
+  @IsOptional()
+  @IsUrl()
   @MaxLength(255)
   url?: string;
 }

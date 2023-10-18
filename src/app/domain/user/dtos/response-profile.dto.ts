@@ -12,6 +12,8 @@ export class ResponseProfile {
 
   gender: GENDER;
 
+  bio: string;
+
   @Expose({ name: 'image' })
   photo: string;
 

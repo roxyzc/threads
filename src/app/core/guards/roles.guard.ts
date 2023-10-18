@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { TokenService } from 'src/app/shared/token/services/token.service';
+import { TokenService } from 'src/app/shared/token/token.service';
 
 @Injectable()
 export class RoleGuard implements CanActivate {

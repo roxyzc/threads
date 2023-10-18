@@ -7,7 +7,7 @@ import {
   ForbiddenException,
   Scope,
 } from '@nestjs/common';
-import { TokenService } from 'src/app/shared/token/services/token.service';
+import { TokenService } from 'src/app/shared/token/token.service';
 import { ParamsSignUp } from '../../interfaces/auth.interface';
 import { EntityManager } from 'typeorm';
 import { User, UserActive } from 'src/app/entities/user.entity';
@@ -15,7 +15,7 @@ import { Token } from 'src/app/entities/token.entity';
 import { reverseSlug, slug } from 'src/app/utils/slug.util';
 import { SigninDto } from '../dtos/signin.dto';
 import { ResponseAuth, ResponseAuthRaw } from '../dtos/response.dto';
-import { MailService } from 'src/app/shared/mail/services/mail.service';
+import { MailService } from 'src/app/shared/mail/mail.service';
 import { encrypt } from 'src/app/utils/crypto.util';
 import { ConfigService } from '@nestjs/config';
 import { TokenPayload } from 'src/app/shared/interfaces/token.interface';
@@ -66,7 +66,6 @@ export class AuthService {
 
       return 'user created successfully';
     } catch (error) {
-      console.log(error.message);
       throw error;
     }
   }
@@ -95,7 +94,6 @@ export class AuthService {
 
       return this.createResponseAuth(user, accessToken);
     } catch (error) {
-      console.log(error.message);
       throw error;
     }
   }
@@ -204,6 +202,9 @@ export class AuthService {
       return new ResponseAuthRaw({
         ...user,
         username: reverseSlug(user.username),
+        fullName: user?.profile?.fullName,
+        gender: user?.profile?.gender,
+        image: user?.profile?.photo?.url,
       });
     } catch (error) {
       if (error instanceof UnauthorizedException) {

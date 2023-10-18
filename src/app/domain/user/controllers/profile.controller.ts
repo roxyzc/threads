@@ -11,6 +11,7 @@ import {
   UploadedFile,
   Put,
   ParseFilePipeBuilder,
+  Logger,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -27,6 +28,7 @@ import { UpdatePhotoProfileDto } from '../dtos/update-photo-ptofile.dto';
 
 @Controller('profile')
 export class ProfileController {
+  private readonly logger = new Logger(ProfileController.name);
   constructor(
     private readonly profileService: ProfileService,
     private readonly cacheService: CacheService,
@@ -61,7 +63,7 @@ export class ProfileController {
         data: profile,
       };
     } catch (err) {
-      console.error(err.message);
+      this.logger.error(err.message);
       throw err;
     }
   }
@@ -73,11 +75,16 @@ export class ProfileController {
     @Query('id', ParseUUIDPipe) userId: string,
     @Body() body: CreateProfileDto,
   ): Promise<HttpResponse> {
-    await this.profileService.createProfile(userId, body);
-    return {
-      message: 'created profile successfully',
-      statusCode: HttpStatus.CREATED,
-    };
+    try {
+      await this.profileService.createProfile(userId, body);
+      return {
+        message: 'created profile successfully',
+        statusCode: HttpStatus.CREATED,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @Roles(UserRoles.USER)
@@ -87,12 +94,17 @@ export class ProfileController {
     @Query('id', ParseUUIDPipe) userId: string,
     @Body() body: UpdateProfileDto,
   ): Promise<HttpResponse> {
-    console.log(body);
-    await this.profileService.updateProfile(userId, body);
-    return {
-      message: 'Profile updated successfully',
-      statusCode: HttpStatus.OK,
-    };
+    try {
+      await this.profileService.updateProfile(userId, body);
+      await this.cacheService.del(`profile=${userId}`);
+      return {
+        message: 'Profile updated successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @Roles(UserRoles.USER)
@@ -106,7 +118,7 @@ export class ProfileController {
           fileType: /.*(jpg|webp|png|jpeg)/,
         })
         .addMaxSizeValidator({
-          maxSize: 1000,
+          maxSize: 1 * 1024 * 1024,
         })
         .build({
           errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
@@ -114,12 +126,17 @@ export class ProfileController {
     )
     file: Express.Multer.File,
   ): Promise<HttpResponse & { url: string; fileId: string }> {
-    const data = await this.profileService.sendPhotoProfile(file, userId);
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'successfully uploaded',
-      ...data,
-    };
+    try {
+      const data = await this.profileService.sendPhotoProfile(file, userId);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'successfully uploaded',
+        ...data,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @Roles(UserRoles.USER)
@@ -142,11 +159,16 @@ export class ProfileController {
     file: Express.Multer.File,
     @Body() { fileId }: UpdatePhotoProfileDto,
   ): Promise<HttpResponse> {
-    await this.profileService.updatePhotoProfile(file, fileId);
+    try {
+      await this.profileService.updatePhotoProfile(file, fileId);
 
-    return {
-      message: 'Photo profile updated successfully',
-      statusCode: HttpStatus.OK,
-    };
+      return {
+        message: 'Photo profile updated successfully',
+        statusCode: HttpStatus.OK,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 }

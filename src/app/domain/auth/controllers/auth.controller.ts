@@ -10,6 +10,7 @@ import {
   Get,
   BadRequestException,
   Delete,
+  Logger,
 } from '@nestjs/common';
 import { Response, Request } from 'express';
 import { AuthService } from '../services/auth.service';
@@ -26,6 +27,8 @@ import { CacheService } from 'src/app/shared/cache/cache.service';
 
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
@@ -35,16 +38,21 @@ export class AuthController {
   @Throttle({ default: { limit: 1, ttl: 60000 } })
   @Post('signup')
   async signup(@Body() signupDto: SignupDto): Promise<HttpResponse> {
-    if (signupDto.password !== signupDto.confirmPassword) {
-      throw new UnauthorizedException('Passwords do not match');
+    try {
+      if (signupDto.password !== signupDto.confirmPassword) {
+        throw new UnauthorizedException('Passwords do not match');
+      }
+
+      const message = await this.authService.signup(signupDto);
+
+      return {
+        statusCode: HttpStatus.OK,
+        message,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
     }
-
-    const message = await this.authService.signup(signupDto);
-
-    return {
-      statusCode: HttpStatus.OK,
-      message,
-    };
   }
 
   @Post('signin')
@@ -52,19 +60,24 @@ export class AuthController {
     @Body() signin: SigninDto,
     @Res({ passthrough: true }) response: Response,
   ): Promise<HttpResponse & { data: ResponseAuth }> {
-    const data = await this.authService.signin(signin);
-    response.cookie('token', data.token, {
-      sameSite: 'none',
-      maxAge: 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure:
-        this.configService.get('node.env') === 'production' ? true : false,
-    });
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Ok',
-      data,
-    };
+    try {
+      const data = await this.authService.signin(signin);
+      response.cookie('token', data.token, {
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure:
+          this.configService.get('node.env') === 'production' ? true : false,
+      });
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Ok',
+        data,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @SkipThrottle()
@@ -73,16 +86,21 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    const token = request.cookies['token'];
-    if (token) {
-      this.authService.logout(token);
-      response.clearCookie('token');
-    }
+    try {
+      const token = request.cookies['token'];
+      if (token) {
+        this.authService.logout(token);
+        response.clearCookie('token');
+      }
 
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Ok',
-    };
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Ok',
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @Throttle({ default: { limit: 1, ttl: 60000 } })
@@ -90,12 +108,17 @@ export class AuthController {
   async resetPassword(
     @Body() { email }: ResetPasswordDto,
   ): Promise<HttpResponse> {
-    await this.authService.resetPassword(email);
+    try {
+      await this.authService.resetPassword(email);
 
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Ok',
-    };
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Ok',
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @Throttle({ default: { limit: 1, ttl: 60000 } })
@@ -103,11 +126,16 @@ export class AuthController {
   async resendUserVerification(
     @Body() { email }: ResendUserVerificationDto,
   ): Promise<HttpResponse> {
-    await this.authService.resendUserVerification(email);
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Ok',
-    };
+    try {
+      await this.authService.resendUserVerification(email);
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Ok',
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
   }
 
   @SkipThrottle()
@@ -115,25 +143,30 @@ export class AuthController {
   async me(
     @Req() request: Request,
   ): Promise<HttpResponse & { data: ResponseAuthRaw }> {
-    const token = request.cookies['token'];
-    const cacheKey = `me:${token}`;
+    try {
+      const token = request.cookies['token'];
+      const cacheKey = `me:${token}`;
 
-    const cachedData = await this.cacheService.get<ResponseAuthRaw>(cacheKey);
-    if (cachedData) {
+      const cachedData = await this.cacheService.get(cacheKey);
+      if (cachedData) {
+        return {
+          statusCode: HttpStatus.OK,
+          message: 'Ok',
+          data: new ResponseAuthRaw(cachedData),
+        };
+      }
+
+      const data = await this.authService.me(token);
+      await this.cacheService.set(`me:${token}`, data, 30);
       return {
         statusCode: HttpStatus.OK,
         message: 'Ok',
-        data: cachedData,
+        data,
       };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
     }
-
-    const data = await this.authService.me(token);
-    await this.cacheService.set(`me:${token}`, data, 30);
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Ok',
-      data,
-    };
   }
 
   @Get('google')
@@ -148,24 +181,29 @@ export class AuthController {
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response,
   ) {
-    if (!request?.user) {
-      throw new BadRequestException();
+    try {
+      if (!request?.user) {
+        throw new BadRequestException();
+      }
+
+      const data = await this.authService.googleLogin(request.user);
+      response.cookie('token', data.token, {
+        sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000,
+        httpOnly: true,
+        secure:
+          this.configService.get('node.env') === 'production' ? true : false,
+      });
+
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'Ok',
+        data,
+      };
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
     }
-
-    const data = await this.authService.googleLogin(request.user);
-    response.cookie('token', data.token, {
-      sameSite: 'none',
-      maxAge: 24 * 60 * 60 * 1000,
-      httpOnly: true,
-      secure:
-        this.configService.get('node.env') === 'production' ? true : false,
-    });
-
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Ok',
-      data,
-    };
   }
 
   @Get('user-agent')

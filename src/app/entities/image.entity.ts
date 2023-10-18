@@ -1,5 +1,12 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToOne } from 'typeorm';
+import {
+  Entity,
+  Column,
+  PrimaryGeneratedColumn,
+  OneToOne,
+  ManyToOne,
+} from 'typeorm';
 import { Profile } from './profile.entity';
+import { Content } from './content.entity';
 
 @Entity()
 export class Image {
@@ -17,5 +24,12 @@ export class Image {
     onDelete: 'CASCADE',
     onUpdate: 'CASCADE',
   })
-  profile: Profile;
+  profile?: Profile;
+
+  @ManyToOne(() => Content, (content) => content.images, {
+    cascade: true,
+    onDelete: 'CASCADE',
+    onUpdate: 'CASCADE',
+  })
+  content?: Content;
 }

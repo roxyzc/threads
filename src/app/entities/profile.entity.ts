@@ -31,6 +31,9 @@ export class Profile {
   @Column({ type: 'enum', default: GENDER.OTHER, enum: GENDER })
   gender: GENDER;
 
+  @Column({ type: 'varchar', nullable: true, length: 500 })
+  bio: string;
+
   @Column({ type: 'varchar', nullable: true, length: 255 })
   url: string;
 

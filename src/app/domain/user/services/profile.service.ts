@@ -25,6 +25,7 @@ interface UpdateProfile {
   url: string;
   firstName: string;
   lastName: string;
+  bio: string;
 }
 
 @Injectable()
