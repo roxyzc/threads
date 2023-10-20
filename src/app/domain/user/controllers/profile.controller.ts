@@ -39,7 +39,7 @@ export class ProfileController {
   @Throttle({ default: { limit: 10, ttl: 30000 } })
   @Get()
   async getProfile(
-    @Query('id', ParseUUIDPipe) userId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
     try {
       const cacheKey = `profile=${userId}`;
@@ -72,7 +72,7 @@ export class ProfileController {
   @UseInterceptors(UserInterceptor)
   @Post()
   async createProfile(
-    @Query('id', ParseUUIDPipe) userId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
     @Body() body: CreateProfileDto,
   ): Promise<HttpResponse> {
     try {
@@ -91,7 +91,7 @@ export class ProfileController {
   @UseInterceptors(UserInterceptor)
   @Patch()
   async updateProfile(
-    @Query('id', ParseUUIDPipe) userId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
     @Body() body: UpdateProfileDto,
   ): Promise<HttpResponse> {
     try {
@@ -111,7 +111,7 @@ export class ProfileController {
   @UseInterceptors(UserInterceptor, FileInterceptor('image'))
   @Post('upload')
   async sendPhotoProfile(
-    @Query('id', ParseUUIDPipe) userId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
     @UploadedFile(ParseFilePipe)
     file: Express.Multer.File,
   ): Promise<HttpResponse & { url: string; fileId: string }> {
@@ -132,7 +132,7 @@ export class ProfileController {
   @UseInterceptors(UserInterceptor, FileInterceptor('image'))
   @Put('upload')
   async updatePhotoProfile(
-    @Query('id', ParseUUIDPipe) _userId: string,
+    @Query('user_id', ParseUUIDPipe) _userId: string,
     @UploadedFile(ParseFilePipe)
     file: Express.Multer.File,
     @Body() { fileId }: UpdatePhotoProfileDto,

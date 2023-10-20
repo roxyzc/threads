@@ -17,6 +17,7 @@ import { UserRoles } from 'src/app/entities/user.entity';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ParseFilesPipe } from 'src/app/core/pipe/parseFilesPipe.pipe';
 import { HttpResponse } from '../../interfaces/response.interface';
+import { Content } from 'src/app/entities/content.entity';
 
 @Controller('content')
 export class ContentController {
@@ -31,7 +32,7 @@ export class ContentController {
   )
   async createContent(
     @Body() body: CreateContentDto,
-    @Query('id') userId: string,
+    @Query('user_id') userId: string,
     @UploadedFiles(ParseFilesPipe)
     { images }: { images?: Array<Express.Multer.File> },
   ): Promise<HttpResponse> {
@@ -48,21 +49,35 @@ export class ContentController {
   }
 
   @Get('get')
-  async getContentByUserId(@Query('content_id') contentId: string) {
+  @Roles(UserRoles.USER)
+  async getContentByUserId(
+    @Query('content_id') contentId: string,
+  ): Promise<HttpResponse & { data?: Content }> {
     try {
-      return await this.contentService.getContentByContentId(contentId);
+      const data = await this.contentService.getContentByContentId(contentId);
+      return {
+        message: 'Ok',
+        statusCode: HttpStatus.OK,
+        data,
+      };
     } catch (error) {
       this.logger.error(error.message);
       throw error;
     }
   }
 
-  @Get('get/byuserid')
-  async getContentByContentId(@Query('id') userId: string) {
+  @Get('get/by')
+  @Roles(UserRoles.USER)
+  @UseInterceptors(UserInterceptor)
+  async getContentByContentId(
+    @Query('user_id') userId: string,
+  ): Promise<HttpResponse & { data?: Content[] }> {
     try {
       const data = await this.contentService.getContentByUserId(userId);
       return {
-        data: data,
+        message: 'Ok',
+        statusCode: HttpStatus.OK,
+        data: data ?? [],
       };
     } catch (error) {
       this.logger.error(error.message);

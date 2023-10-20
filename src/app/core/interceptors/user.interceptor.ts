@@ -10,7 +10,7 @@ export class UserInterceptor implements NestInterceptor {
   async intercept(context: ExecutionContext, next: CallHandler) {
     const { user, query } = context.switchToHttp().getRequest();
     if (user && user.userId && user.role) {
-      if (user.userId !== query.id && user.role !== UserRoles.ADMIN) {
+      if (user.userId !== query.user_id && user.role !== UserRoles.ADMIN) {
         throw new ForbiddenException('Request invalid');
       }
     } else {

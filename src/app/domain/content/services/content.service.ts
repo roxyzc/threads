@@ -43,21 +43,36 @@ export class ContentService {
   }
 
   public async getContentByContentId(contentId: string): Promise<Content> {
-    return await this.contentRepository.findOne({
-      where: {
-        contentId: contentId,
-      },
-      relations: ['images'],
-    });
+    try {
+      const findContent = await this.contentRepository
+        .createQueryBuilder('content')
+        .where('contentId = :contentId', { contentId })
+        .leftJoin('content.images', 'image')
+        .addSelect('image.url')
+        .getOne();
+
+      if (!findContent) {
+        throw new NotFoundException('Content not found');
+      }
+
+      return findContent;
+    } catch (error) {
+      throw error;
+    }
   }
 
   public async getContentByUserId(userId: string): Promise<Content[]> {
-    return await this.contentRepository.find({
-      where: {
-        userId,
-      },
-      relations: ['images'],
-    });
+    try {
+      const data = await this.contentRepository
+        .createQueryBuilder('content')
+        .where('userId = :userId', { userId })
+        .leftJoin('content.images', 'image')
+        .addSelect('image.url')
+        .getMany();
+      return data;
+    } catch (error) {
+      throw error;
+    }
   }
 
   public async createContent(
