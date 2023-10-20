@@ -192,10 +192,10 @@ export class ProfileService {
 
         try {
           const createProfile = entityManager.create(Profile, {
-            firstName,
+            firstName: firstName.toLowerCase(),
+            lastName: lastName ? lastName.toLowerCase() : lastName,
+            fullName: fullName.toLowerCase(),
             gender,
-            lastName,
-            fullName,
             user,
           });
           await entityManager.save<Profile>([createProfile]);
@@ -224,8 +224,10 @@ export class ProfileService {
             { profileId: profile.profileId },
             {
               ...payload,
-              lastName: payload?.lastName ?? null,
-              fullName: fullName,
+              lastName: payload.lastName
+                ? payload.lastName.toLowerCase()
+                : null,
+              fullName: fullName.toLowerCase(),
             },
           );
         } catch (error) {

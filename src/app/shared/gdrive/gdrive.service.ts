@@ -84,11 +84,45 @@ export class GdriveService {
     }
   }
 
+  public async saveFiles(files: Array<Express.Multer.File>, folderId: string) {
+    const filesId: string[] = [];
+    try {
+      if (files && files.length > 0) {
+        for (const file of files) {
+          const bufferStream = new stream.PassThrough();
+          bufferStream.end(file.buffer);
+          const createdFile = await this.driveClient.files.create({
+            requestBody: {
+              name: file.originalname,
+              parents: folderId ? [folderId] : [],
+            },
+            media: {
+              mimeType: file.mimetype,
+              body: bufferStream,
+            },
+          });
+
+          await this.driveClient.permissions.create({
+            fileId: createdFile.data.id,
+            requestBody: {
+              role: 'reader',
+              type: 'anyone',
+            },
+          });
+          filesId.push(createdFile.data.id);
+        }
+        return filesId;
+      }
+      return;
+    } catch (error) {
+      throw new BadRequestException(error.message);
+    }
+  }
+
   public async saveFile(file: Express.Multer.File, folderId: string) {
     try {
       const bufferStream = new stream.PassThrough();
       bufferStream.end(file.buffer);
-      console.log(file.buffer);
       const createdFile = await this.driveClient.files.create({
         requestBody: {
           name: file.originalname,

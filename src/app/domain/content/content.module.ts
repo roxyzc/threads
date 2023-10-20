@@ -3,10 +3,17 @@ import { ContentService } from './services/content.service';
 import { ContentController } from './controllers/content.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Content } from 'src/app/entities/content.entity';
+import { ImageContent } from 'src/app/entities/imageContent.entity';
+import { GdriveModule } from 'src/app/shared/gdrive/gdrive.module';
+import { User } from 'src/app/entities/user.entity';
+import { ContentSubscriber } from './content.subscriber';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Content])],
-  providers: [ContentService],
+  imports: [
+    TypeOrmModule.forFeature([Content, ImageContent, User]),
+    GdriveModule,
+  ],
+  providers: [ContentService, ContentSubscriber],
   controllers: [ContentController],
 })
 export class ContentModule {}

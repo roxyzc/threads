@@ -3,6 +3,7 @@ import {
   EventSubscriber,
   DataSource,
   InsertEvent,
+  UpdateEvent,
 } from 'typeorm';
 import { User } from '../../entities/user.entity';
 import { hash } from 'src/app/utils/hash.util';
@@ -22,6 +23,11 @@ export class UserSubscriber implements EntitySubscriberInterface<User> {
     const hashedPassword = await hash(event.entity.password);
     event.entity.password = hashedPassword;
     event.entity.createdAt = date;
+    event.entity.updatedAt = date;
+  }
+
+  async beforeUpdate(event: UpdateEvent<User>): Promise<void> {
+    const date = new Date().getTime();
     event.entity.updatedAt = date;
   }
 }

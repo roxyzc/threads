@@ -10,7 +10,6 @@ import {
   HttpStatus,
   UploadedFile,
   Put,
-  ParseFilePipeBuilder,
   Logger,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
@@ -25,6 +24,7 @@ import { ResponseProfile } from '../dtos/response-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CacheService } from 'src/app/shared/cache/cache.service';
 import { UpdatePhotoProfileDto } from '../dtos/update-photo-ptofile.dto';
+import { ParseFilePipe } from 'src/app/core/pipe/parseFilePipe.pipe';
 
 @Controller('profile')
 export class ProfileController {
@@ -112,18 +112,7 @@ export class ProfileController {
   @Post('upload')
   async sendPhotoProfile(
     @Query('id', ParseUUIDPipe) userId: string,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /.*(jpg|webp|png|jpeg)/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 1 * 1024 * 1024,
-        })
-        .build({
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        }),
-    )
+    @UploadedFile(ParseFilePipe)
     file: Express.Multer.File,
   ): Promise<HttpResponse & { url: string; fileId: string }> {
     try {
@@ -144,18 +133,7 @@ export class ProfileController {
   @Put('upload')
   async updatePhotoProfile(
     @Query('id', ParseUUIDPipe) _userId: string,
-    @UploadedFile(
-      new ParseFilePipeBuilder()
-        .addFileTypeValidator({
-          fileType: /.*(jpg|webp|png|jpeg)/,
-        })
-        .addMaxSizeValidator({
-          maxSize: 1 * 1024 * 1024,
-        })
-        .build({
-          errorHttpStatusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-        }),
-    )
+    @UploadedFile(ParseFilePipe)
     file: Express.Multer.File,
     @Body() { fileId }: UpdatePhotoProfileDto,
   ): Promise<HttpResponse> {
