@@ -6,7 +6,7 @@ import {
   JoinColumn,
 } from 'typeorm';
 import { User } from './user.entity';
-import { Image } from './image.entity';
+import { ImageProfile } from './imageProfile.entity';
 
 export enum GENDER {
   MALE = 'male',
@@ -37,9 +37,9 @@ export class Profile {
   @Column({ type: 'varchar', nullable: true, length: 255 })
   url: string;
 
-  @OneToOne(() => Image, (image) => image.profile)
+  @OneToOne(() => ImageProfile, (image) => image.profile)
   @JoinColumn({ name: 'imageId' })
-  photo?: Image;
+  photo?: ImageProfile;
 
   @OneToOne(() => User, (user) => user.profile, {
     cascade: true,

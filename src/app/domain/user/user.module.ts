@@ -7,13 +7,12 @@ import { ProfileController } from './controllers/profile.controller';
 import { ProfileService } from './services/profile.service';
 import { Profile } from 'src/app/entities/profile.entity';
 import { GdriveModule } from 'src/app/shared/gdrive/gdrive.module';
-import { Image } from 'src/app/entities/image.entity';
+import { ImageProfile } from 'src/app/entities/imageProfile.entity';
 import { CacheModule } from 'src/app/shared/cache/cache.module';
-import { Content } from 'src/app/entities/content.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Image, Profile, Content]),
+    TypeOrmModule.forFeature([User, ImageProfile, Profile]),
     GdriveModule,
     CacheModule,
   ],

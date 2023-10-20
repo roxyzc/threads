@@ -11,7 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User, UserActive } from 'src/app/entities/user.entity';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
-import { Image } from 'src/app/entities/image.entity';
+import { ImageProfile } from 'src/app/entities/imageProfile.entity';
 
 interface CreateProfile {
   firstName: string;
@@ -75,7 +75,7 @@ export class ProfileService {
   private async lockImage(fileId: string, entityManager: EntityManager) {
     const findImage = await entityManager
       .getRepository(Image)
-      .createQueryBuilder('image')
+      .createQueryBuilder('image_profile')
       .select('image.*')
       .where('image.fileId = :fileId', { fileId })
       .setLock('pessimistic_write')
@@ -116,7 +116,10 @@ export class ProfileService {
 
           fileId = await this.gdriveService.saveFile(file, folder.id);
           const url = await this.getPhotoProfile(fileId);
-          const createImage = entityManager.create(Image, { fileId, url });
+          const createImage = entityManager.create(ImageProfile, {
+            fileId,
+            url,
+          });
           const image = await entityManager.save(createImage);
           await entityManager.update(
             Profile,

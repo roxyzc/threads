@@ -10,11 +10,12 @@ export class CreateProfileDto {
 
   @IsString()
   @IsAlphaAndSpace()
+  @IsOptional()
   lastName: string;
 
   @Expose()
   get fullName(): string {
-    return `${this.firstName} ${this.lastName}`;
+    return `${this.firstName} ${this.lastName ?? ''}`.trim();
   }
 
   @IsEnum(GENDER)
