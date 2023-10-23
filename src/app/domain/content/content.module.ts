@@ -7,13 +7,16 @@ import { ImageContent } from 'src/app/entities/imageContent.entity';
 import { GdriveModule } from 'src/app/shared/gdrive/gdrive.module';
 import { User } from 'src/app/entities/user.entity';
 import { ContentSubscriber } from './content.subscriber';
+import { Tag } from 'src/app/entities/tag.entity';
+import { TagService } from './services/tag.service';
+import { TagController } from './controllers/tags.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Content, ImageContent, User]),
+    TypeOrmModule.forFeature([Content, ImageContent, User, Tag]),
     GdriveModule,
   ],
-  providers: [ContentService, ContentSubscriber],
-  controllers: [ContentController],
+  providers: [ContentService, ContentSubscriber, TagService],
+  controllers: [ContentController, TagController],
 })
 export class ContentModule {}

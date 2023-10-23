@@ -12,6 +12,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 
 interface createContent {
   content?: string;
+  tags?: { name: string }[];
 }
 
 @Injectable()
@@ -48,7 +49,8 @@ export class ContentService {
         .createQueryBuilder('content')
         .where('contentId = :contentId', { contentId })
         .leftJoin('content.images', 'image')
-        .addSelect('image.url')
+        .leftJoin('content.tags', 'tag')
+        .addSelect(['image.url', 'tag.name'])
         .getOne();
 
       if (!findContent) {
@@ -67,8 +69,11 @@ export class ContentService {
         .createQueryBuilder('content')
         .where('userId = :userId', { userId })
         .leftJoin('content.images', 'image')
-        .addSelect('image.url')
+        .leftJoin('content.tags', 'tag')
+        .addSelect(['image.url', 'tag.name'])
         .getMany();
+
+      console.log(data);
       return data;
     } catch (error) {
       throw error;
@@ -77,7 +82,7 @@ export class ContentService {
 
   public async createContent(
     userId: string,
-    { content }: createContent,
+    params: createContent,
     images?: Array<Express.Multer.File>,
   ) {
     let fileId: string[];
@@ -90,10 +95,10 @@ export class ContentService {
       await this.entityManager.transaction(async (entityManager) => {
         const findUser = await this.lockUser(userId, entityManager);
         const createContent = entityManager.create(Content, {
-          content,
+          ...params,
           userId: findUser.userId,
         });
-        const dataContent = await entityManager.save(createContent);
+        const dataContent = await entityManager.save([createContent]);
 
         if (images && images.length > 0) {
           fileId = await this.gdriveService.saveFiles(images, folder.id);
@@ -102,7 +107,7 @@ export class ContentService {
             const url = await this.gdriveService.getFileUrl(id);
             createImage.push(
               entityManager.create(ImageContent, {
-                content: dataContent,
+                content: dataContent[0],
                 fileId: id,
                 url,
               }),

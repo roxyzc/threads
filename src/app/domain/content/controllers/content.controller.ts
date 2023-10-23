@@ -18,6 +18,7 @@ import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ParseFilesPipe } from 'src/app/core/pipe/parseFilesPipe.pipe';
 import { HttpResponse } from '../../interfaces/response.interface';
 import { Content } from 'src/app/entities/content.entity';
+import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller('content')
 export class ContentController {
@@ -28,7 +29,7 @@ export class ContentController {
   @Roles(UserRoles.USER)
   @UseInterceptors(
     UserInterceptor,
-    FileFieldsInterceptor([{ name: 'images', maxCount: 3 }]),
+    FileFieldsInterceptor([{ name: 'images', maxCount: 4 }]),
   )
   async createContent(
     @Body() body: CreateContentDto,
@@ -49,7 +50,8 @@ export class ContentController {
   }
 
   @Get('get')
-  @Roles(UserRoles.USER)
+  @SkipThrottle()
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
   async getContentByUserId(
     @Query('content_id') contentId: string,
   ): Promise<HttpResponse & { data?: Content }> {
@@ -67,6 +69,7 @@ export class ContentController {
   }
 
   @Get('get/by')
+  @SkipThrottle()
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
   async getContentByContentId(
