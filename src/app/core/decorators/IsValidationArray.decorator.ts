@@ -3,6 +3,7 @@ import {
   registerDecorator,
   ValidationArguments,
 } from 'class-validator';
+import { TagDto } from 'src/app/domain/content/dtos/tag.dto';
 import validator from 'validator';
 
 export function IsValidationArray(validationOptions?: ValidationOptions) {
@@ -15,8 +16,6 @@ export function IsValidationArray(validationOptions?: ValidationOptions) {
       constraints: [],
       validator: {
         validate(value: { name: string }) {
-          let i = 0;
-
           if (value && value.name === undefined) {
             return false;
           }
@@ -24,19 +23,41 @@ export function IsValidationArray(validationOptions?: ValidationOptions) {
           if (
             value.name !== undefined &&
             (!validator.isAlphanumeric(validator.blacklist(value.name, ' ')) ||
-              validator.trim(value.name).replace(/\s+/g, ' ') !== value.name ||
-              i > 5)
+              validator.trim(value.name).replace(/\s+/g, ' ') !== value.name)
           ) {
             return false;
           }
 
-          i = i + 1;
           return true;
         },
         defaultMessage(object: ValidationArguments) {
           return (
             (object.object as any)[`${object.property}_error`] ||
             `${propertyName} only a-z,A-Z,0-9`
+          );
+        },
+      },
+    });
+  };
+}
+
+export function IsUniqueTagName(validationOptions?: ValidationOptions) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      name: 'isUniqueTagName',
+      target: object.constructor,
+      propertyName: propertyName,
+      options: validationOptions,
+      constraints: [],
+      validator: {
+        validate(value: TagDto, args) {
+          const tags: TagDto[] = args.object[propertyName];
+          return tags.filter((tag) => tag.name === value.name).length <= 1;
+        },
+        defaultMessage(object: ValidationArguments) {
+          return (
+            (object.object as any)[`${object.property}_error`] ||
+            `${propertyName} must unique`
           );
         },
       },

@@ -75,13 +75,25 @@ export class ContentController {
   @UseInterceptors(UserInterceptor)
   async getContentByContentId(
     @Query('user_id', ParseUUIDPipe) userId: string,
-  ): Promise<HttpResponse & { data?: Content[] }> {
+  ): Promise<
+    HttpResponse & {
+      data: {
+        profile: { fullName: string; image: string };
+        contents?: Content[];
+      };
+    }
+  > {
     try {
-      const data = await this.contentService.getContentByUserId(userId);
+      const { data, profile } = await this.contentService.getContentByUserId(
+        userId,
+      );
       return {
         message: 'Ok',
         statusCode: HttpStatus.OK,
-        data: data ?? [],
+        data: {
+          profile,
+          contents: data ?? [],
+        },
       };
     } catch (error) {
       this.logger.error(error.message);

@@ -9,6 +9,7 @@ import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 import { ImageContent } from 'src/app/entities/imageContent.entity';
 import { User, UserActive } from 'src/app/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Profile } from 'src/app/entities/profile.entity';
 
 interface createContent {
   content?: string;
@@ -20,11 +21,16 @@ export class ContentService {
   constructor(
     @InjectRepository(Content)
     private readonly contentRepository: Repository<Content>,
+    @InjectRepository(Profile)
+    private readonly profileRepository: Repository<Profile>,
     private readonly entityManager: EntityManager,
     private readonly gdriveService: GdriveService,
   ) {}
 
-  private async lockUser(userId: string, entityManager: EntityManager) {
+  private async lockUser(
+    userId: string,
+    entityManager: EntityManager,
+  ): Promise<User> {
     const findUser = await entityManager
       .getRepository(User)
       .createQueryBuilder()
@@ -63,7 +69,10 @@ export class ContentService {
     }
   }
 
-  public async getContentByUserId(userId: string): Promise<Content[]> {
+  public async getContentByUserId(userId: string): Promise<{
+    profile: { fullName: string; image: string };
+    data: Content[];
+  }> {
     try {
       const data = await this.contentRepository
         .createQueryBuilder('content')
@@ -73,8 +82,21 @@ export class ContentService {
         .addSelect(['image.url', 'tag.name'])
         .getMany();
 
-      console.log(data);
-      return data;
+      const profile = await this.profileRepository
+        .createQueryBuilder('profile')
+        .select(['profile.fullName'])
+        .where('userId = :userId', { userId })
+        .leftJoin('profile.photo', 'image')
+        .addSelect(['image.url'])
+        .getOne();
+
+      return {
+        profile: {
+          fullName: profile.fullName,
+          image: profile.url,
+        },
+        data,
+      };
     } catch (error) {
       throw error;
     }

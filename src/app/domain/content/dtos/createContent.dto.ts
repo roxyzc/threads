@@ -1,7 +1,16 @@
-import { IsString, MaxLength, IsOptional, IsArray } from 'class-validator';
+import {
+  IsString,
+  MaxLength,
+  IsOptional,
+  IsArray,
+  ArrayMaxSize,
+} from 'class-validator';
 import { TagDto } from './tag.dto';
 import { Type } from 'class-transformer';
-import { IsValidationArray } from 'src/app/core/decorators/IsValidationArray.decorator';
+import {
+  IsValidationArray,
+  IsUniqueTagName,
+} from 'src/app/core/decorators/IsValidationArray.decorator';
 
 export class CreateContentDto {
   @IsOptional()
@@ -10,7 +19,9 @@ export class CreateContentDto {
   content?: string;
 
   @IsArray()
+  @ArrayMaxSize(5, { message: 'Maximum 5 tags are allowed.' })
   @Type(() => TagDto)
+  @IsUniqueTagName({ each: true })
   @IsValidationArray({ each: true })
   @IsOptional()
   tags?: TagDto[];
