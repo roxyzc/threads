@@ -8,6 +8,7 @@ import {
   Query,
   UploadedFiles,
   UseInterceptors,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { ContentService } from '../services/content.service';
 import { CreateContentDto } from '../dtos/createContent.dto';
@@ -33,7 +34,7 @@ export class ContentController {
   )
   async createContent(
     @Body() body: CreateContentDto,
-    @Query('user_id') userId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
     @UploadedFiles(ParseFilesPipe)
     { images }: { images?: Array<Express.Multer.File> },
   ): Promise<HttpResponse> {
@@ -53,7 +54,7 @@ export class ContentController {
   @SkipThrottle()
   @Roles(UserRoles.USER, UserRoles.ADMIN)
   async getContentByUserId(
-    @Query('content_id') contentId: string,
+    @Query('content_id', ParseUUIDPipe) contentId: string,
   ): Promise<HttpResponse & { data?: Content }> {
     try {
       const data = await this.contentService.getContentByContentId(contentId);
@@ -73,7 +74,7 @@ export class ContentController {
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
   async getContentByContentId(
-    @Query('user_id') userId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
   ): Promise<HttpResponse & { data?: Content[] }> {
     try {
       const data = await this.contentService.getContentByUserId(userId);
