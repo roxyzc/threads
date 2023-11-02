@@ -1,14 +1,15 @@
 import {
+  BadRequestException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import { Content } from 'src/app/entities/content.entity';
 import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 import { ImageContent } from 'src/app/entities/imageContent.entity';
-import { User, UserActive } from 'src/app/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { UserService } from '../../user/services/user.service';
+import { ResponseContent } from '../dtos/responseContent.dto';
 
 interface createContent {
   content?: string;
@@ -22,59 +23,161 @@ export class ContentService {
     private readonly contentRepository: Repository<Content>,
     private readonly entityManager: EntityManager,
     private readonly gdriveService: GdriveService,
+    private readonly userService: UserService,
   ) {}
 
-  private async lockUser(userId: string, entityManager: EntityManager) {
-    const findUser = await entityManager
-      .getRepository(User)
-      .createQueryBuilder()
-      .select('userId')
-      .where('userId = :userId', { userId })
-      .setLock('pessimistic_write')
-      .getRawOne();
+  private createPagination(
+    totalData: number,
+    limit: number,
+    page: number,
+    start: number,
+  ) {
+    const pagination = {};
+    const end = page * limit;
 
-    if (!findUser) {
-      throw new NotFoundException('User not found');
+    Object.assign(pagination, {
+      totalData,
+      totalPage: Math.ceil(totalData / limit),
+      currentPage: page,
+    });
+
+    if (end < totalData) {
+      Object.assign(pagination, {
+        next: {
+          page: page + 1,
+          limit_item: limit,
+          remaining: totalData - (start + limit),
+        },
+      });
     }
 
-    if (findUser.active === UserActive.INACTIVE) {
-      throw new UnauthorizedException('user inactive');
+    if (start > 0 && page - Math.ceil(totalData / limit) < 1) {
+      Object.assign(pagination, {
+        prev: {
+          page: page - 1,
+          limit,
+          ramaining: totalData - (totalData - start),
+        },
+      });
     }
-    return findUser;
+
+    if (page - Math.ceil(totalData / limit) === 1) {
+      Object.assign(pagination, {
+        prev: { remaining: totalData },
+      });
+    }
+
+    return pagination;
   }
 
-  public async getContentByContentId(contentId: string): Promise<Content> {
-    try {
-      const findContent = await this.contentRepository
-        .createQueryBuilder('content')
-        .where('contentId = :contentId', { contentId })
-        .leftJoin('content.images', 'image')
-        .leftJoin('content.tags', 'tag')
-        .addSelect(['image.url', 'tag.name'])
-        .getOne();
+  private async queryContentByUserId(
+    userId: string,
+    limit: number,
+    page: number,
+  ) {
+    const limit_item = limit > 20 ? 20 : limit;
+    const start = (page - 1) * limit_item;
+    const [data, count] = await this.queryContent()
+      .where('content.userId = :userId', { userId })
+      .take(limit_item)
+      .skip(start)
+      .getManyAndCount();
+    return { limit_item, start, data, count };
+  }
 
-      if (!findContent) {
-        throw new NotFoundException('Content not found');
+  private async queryAllContent(limit: number, page: number) {
+    const limit_item = limit > 20 ? 20 : limit;
+    const start = (page - 1) * limit_item;
+    const [data, count] = await this.queryContent()
+      .take(limit_item)
+      .skip(start)
+      .getManyAndCount();
+    return { limit_item, start, data, count };
+  }
+
+  private async qqueryContentByContentId(contentId: string) {
+    const data = await this.queryContent()
+      .where('content.contentId = :contentId', { contentId })
+      .getOne();
+    return data;
+  }
+
+  private queryContent() {
+    return this.contentRepository
+      .createQueryBuilder('content')
+      .leftJoin('content.images', 'image')
+      .leftJoin('content.tags', 'tag')
+      .leftJoin('content.user', 'user')
+      .leftJoin('user.profile', 'profile')
+      .leftJoin('profile.photo', 'photoProfile')
+      .addSelect([
+        'image.url',
+        'tag.name',
+        'user.username',
+        'profile.fullName',
+        'photoProfile.url',
+      ]);
+  }
+
+  private mapResponseContent(data: Content[]) {
+    return data.map(
+      (content) =>
+        new ResponseContent({
+          ...content,
+          username: content.user.username,
+          url: content.user.profile.photo.url,
+          fullName: content.user.profile.fullName,
+          tags_content: content.tags.map((tag) => tag.name),
+          images_content: content.images.map((image) => image.url),
+        }),
+    );
+  }
+
+  public async getContentsByUserId(
+    userId: string,
+    limit?: number,
+    page?: number,
+  ) {
+    try {
+      if (page < 1 || limit < 1) {
+        throw new BadRequestException(
+          'page and pageSize must be positive integers.',
+        );
       }
 
-      return findContent;
+      const { limit_item, start, data, count } =
+        await this.queryContentByUserId(userId, limit, page);
+      const filter_data = this.mapResponseContent(data);
+      const pagination = this.createPagination(count, limit_item, page, start);
+
+      return { pagination, filter_data };
     } catch (error) {
       throw error;
     }
   }
 
-  public async getContentByUserId(userId: string): Promise<Content[]> {
+  public async getContent(limit: number, page: number) {
     try {
-      const data = await this.contentRepository
-        .createQueryBuilder('content')
-        .where('userId = :userId', { userId })
-        .leftJoin('content.images', 'image')
-        .leftJoin('content.tags', 'tag')
-        .addSelect(['image.url', 'tag.name'])
-        .getMany();
+      const { count, data, limit_item, start } = await this.queryAllContent(
+        limit,
+        page,
+      );
 
-      console.log(data);
-      return data;
+      const filter_data = this.mapResponseContent(data);
+      const pagination = this.createPagination(count, limit_item, page, start);
+
+      return { pagination, filter_data };
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async getContentByContentId(contentId: string) {
+    try {
+      const content = await this.qqueryContentByContentId(contentId);
+      const filter_data = this.mapResponseContent([content]);
+
+      return filter_data;
     } catch (error) {
       throw error;
     }
@@ -93,12 +196,15 @@ export class ContentService {
       }
 
       await this.entityManager.transaction(async (entityManager) => {
-        const findUser = await this.lockUser(userId, entityManager);
+        const user = await this.userService.lockUser(userId, entityManager);
+        if (!user) {
+          throw new NotFoundException('User not found');
+        }
         const createContent = entityManager.create(Content, {
           ...params,
-          userId: findUser.userId,
+          user,
         });
-        const dataContent = await entityManager.save([createContent]);
+        const dataContent = await entityManager.save(createContent);
 
         if (images && images.length > 0) {
           fileId = await this.gdriveService.saveFiles(images, folder.id);
@@ -107,7 +213,7 @@ export class ContentService {
             const url = await this.gdriveService.getFileUrl(id);
             createImage.push(
               entityManager.create(ImageContent, {
-                content: dataContent[0],
+                content: dataContent,
                 fileId: id,
                 url,
               }),

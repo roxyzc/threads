@@ -10,11 +10,13 @@ import { ContentSubscriber } from './content.subscriber';
 import { Tag } from 'src/app/entities/tag.entity';
 import { TagService } from './services/tag.service';
 import { TagController } from './controllers/tags.controller';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Content, ImageContent, User, Tag]),
     GdriveModule,
+    UserModule,
   ],
   providers: [ContentService, ContentSubscriber, TagService],
   controllers: [ContentController, TagController],

@@ -9,6 +9,8 @@ import {
   UploadedFiles,
   UseInterceptors,
   ParseUUIDPipe,
+  ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { ContentService } from '../services/content.service';
 import { CreateContentDto } from '../dtos/createContent.dto';
@@ -50,12 +52,12 @@ export class ContentController {
     }
   }
 
-  @Get('get')
+  @Get('get/by/contentid')
   @SkipThrottle()
   @Roles(UserRoles.USER, UserRoles.ADMIN)
   async getContentByUserId(
     @Query('content_id', ParseUUIDPipe) contentId: string,
-  ): Promise<HttpResponse & { data?: Content }> {
+  ) {
     try {
       const data = await this.contentService.getContentByContentId(contentId);
       return {
@@ -69,19 +71,46 @@ export class ContentController {
     }
   }
 
-  @Get('get/by')
+  @Get('get')
+  @SkipThrottle()
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
+  async getContents(
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe)
+    limit?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe)
+    page?: number,
+  ) {
+    try {
+      return await this.contentService.getContent(limit, page);
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
+    }
+  }
+
+  @Get('get/by/userid')
   @SkipThrottle()
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
   async getContentByContentId(
     @Query('user_id', ParseUUIDPipe) userId: string,
-  ): Promise<HttpResponse & { data?: Content[] }> {
+    @Query('limit', new DefaultValuePipe(10), ParseIntPipe)
+    limit?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe)
+    page?: number,
+  ): Promise<
+    HttpResponse & { data: { pagination?: object; contents: Content[] } }
+  > {
     try {
-      const data = await this.contentService.getContentByUserId(userId);
+      const { pagination, filter_data } =
+        await this.contentService.getContentsByUserId(userId, limit, page);
       return {
         message: 'Ok',
         statusCode: HttpStatus.OK,
-        data: data ?? [],
+        data: {
+          pagination,
+          contents: filter_data,
+        },
       };
     } catch (error) {
       this.logger.error(error.message);
