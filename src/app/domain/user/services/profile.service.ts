@@ -3,15 +3,14 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
-  UnauthorizedException,
 } from '@nestjs/common';
 import { GENDER, Profile } from 'src/app/entities/profile.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User, UserActive } from 'src/app/entities/user.entity';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 import { ImageProfile } from 'src/app/entities/imageProfile.entity';
+import { UserService } from './user.service';
 
 interface CreateProfile {
   firstName: string;
@@ -33,28 +32,10 @@ export class ProfileService {
   constructor(
     @InjectRepository(Profile)
     private readonly profileRepository: Repository<Profile>,
+    private readonly userService: UserService,
     private readonly entityManager: EntityManager,
     private readonly gdriveService: GdriveService,
   ) {}
-
-  private async lockUser(userId: string, entityManager: EntityManager) {
-    const findUser = await entityManager
-      .getRepository(User)
-      .createQueryBuilder()
-      .select('user.*')
-      .where('userId = :userId', { userId })
-      .setLock('pessimistic_write')
-      .getRawOne();
-
-    if (!findUser) {
-      throw new NotFoundException('User not found');
-    }
-
-    if (findUser.active === UserActive.INACTIVE) {
-      throw new UnauthorizedException('user inactive');
-    }
-    return findUser;
-  }
 
   private async lockProfile(userId: string, entityManager: EntityManager) {
     const findProfile = await entityManager
@@ -188,7 +169,7 @@ export class ProfileService {
   ): Promise<void> {
     try {
       await this.entityManager.transaction(async (entityManager) => {
-        const user = await this.lockUser(userId, entityManager);
+        const user = await this.userService.lockUser(userId, entityManager);
 
         try {
           const createProfile = entityManager.create(Profile, {

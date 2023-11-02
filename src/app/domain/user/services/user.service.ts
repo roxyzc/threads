@@ -1,13 +1,36 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { User } from 'src/app/entities/user.entity';
+import { EntityManager, Repository } from 'typeorm';
+import { User, UserActive } from 'src/app/entities/user.entity';
 
 @Injectable()
 export class UserService {
   constructor(
     @InjectRepository(User) private readonly userRepository: Repository<User>,
   ) {}
+
+  public async lockUser(userId: string, entityManager: EntityManager) {
+    const findUser = await entityManager
+      .getRepository(User)
+      .createQueryBuilder()
+      .select('user.*')
+      .where('userId = :userId', { userId })
+      .setLock('pessimistic_write')
+      .getRawOne();
+
+    if (!findUser) {
+      throw new NotFoundException('User not found');
+    }
+
+    if (findUser.active === UserActive.INACTIVE) {
+      throw new UnauthorizedException('user inactive');
+    }
+    return findUser;
+  }
 
   public async getUserById(userId: string, select?: string[]): Promise<User> {
     const selectColumns = select;

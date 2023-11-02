@@ -12,6 +12,7 @@ import { TagService } from './services/tag.service';
 import { TagController } from './controllers/tags.controller';
 import { Profile } from 'src/app/entities/profile.entity';
 import { ImageProfile } from 'src/app/entities/imageProfile.entity';
+import { UserModule } from '../user/user.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { ImageProfile } from 'src/app/entities/imageProfile.entity';
       ImageProfile,
     ]),
     GdriveModule,
+    UserModule,
   ],
   providers: [ContentService, ContentSubscriber, TagService],
   controllers: [ContentController, TagController],
