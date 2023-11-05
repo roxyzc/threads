@@ -27,7 +27,8 @@ export function isAlphanumericAndSpace(validationOptions?: ValidationOptions) {
           return (
             (validationArguments.object as any)[
               `${validationArguments.property}_error`
-            ] || `${propertyName} only a-z,A-Z,0-9`
+            ] ||
+            `${propertyName} should only contain letters and numbers (a-z, A-Z, 0-9)`
           );
         },
       },

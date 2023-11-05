@@ -5,6 +5,7 @@ import {
   HttpStatus,
   Query,
   ParseIntPipe,
+  DefaultValuePipe,
 } from '@nestjs/common';
 import { TagService } from '../services/tag.service';
 import { HttpResponse } from '../../interfaces/response.interface';
@@ -20,8 +21,10 @@ export class TagController {
   @Get('trending')
   @SkipThrottle()
   async getCalculationTags(
-    @Query('limit', ParseIntPipe) limit: number,
-    @Query('page', ParseIntPipe) page: number,
+    @Query('limit', new DefaultValuePipe(20), ParseIntPipe)
+    limit?: number,
+    @Query('page', new DefaultValuePipe(1), ParseIntPipe)
+    page?: number,
   ): Promise<HttpResponse & { data: Tag[] }> {
     try {
       const data = await this.tagService.calcTrending(page, limit);

@@ -13,6 +13,7 @@ import { TagController } from './controllers/tags.controller';
 import { Profile } from 'src/app/entities/profile.entity';
 import { ImageProfile } from 'src/app/entities/imageProfile.entity';
 import { UserModule } from '../user/user.module';
+import { LikeContent } from 'src/app/entities/likeContent.entity';
 
 @Module({
   imports: [
@@ -23,6 +24,7 @@ import { UserModule } from '../user/user.module';
       Tag,
       Profile,
       ImageProfile,
+      LikeContent,
     ]),
     GdriveModule,
     UserModule,

@@ -113,7 +113,7 @@ export class AuthService {
       }
 
       const verificationToken = await this.generateVerificationToken(email);
-      await this.mailService.sendVerifyUser(email, verificationToken);
+      await this.mailService.sendResetPassword(email, verificationToken);
     } catch (error) {
       throw error;
     }
@@ -182,10 +182,9 @@ export class AuthService {
     }
   }
 
-  public async me(token: string) {
+  public async me(userId: string) {
     try {
-      const payload = await this.tokenService.verifyToken(token);
-      const user = await this.userService.getUserById(payload.userId, [
+      const user = await this.userService.getByUserId(userId, [
         'user.userId',
         'user.username',
         'user.email',

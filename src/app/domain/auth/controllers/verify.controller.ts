@@ -11,14 +11,14 @@ import { VerifyService } from '../services/verify.service';
 import { ConfigService } from '@nestjs/config';
 import { decrypt } from 'src/app/utils/crypto.util';
 
-@Controller('verify')
+@Controller()
 export class VerifyController {
   constructor(
     private readonly verifyService: VerifyService,
     private readonly configService: ConfigService,
   ) {}
 
-  @Post('user')
+  @Post('verify/user')
   async verifyUser(@Body() { token }: VerifyUserDto): Promise<HttpResponse> {
     const data = decrypt(token, this.configService.get('chipher.secret'));
 

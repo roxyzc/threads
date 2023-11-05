@@ -14,6 +14,11 @@ export enum GENDER {
   OTHER = 'other',
 }
 
+export enum STATUS_PROFILE {
+  public = 'public',
+  private = 'private',
+}
+
 @Entity()
 export class Profile {
   @PrimaryGeneratedColumn('uuid')
@@ -36,6 +41,13 @@ export class Profile {
 
   @Column({ type: 'varchar', nullable: true, length: 255 })
   url: string;
+
+  @Column({
+    type: 'enum',
+    default: STATUS_PROFILE.public,
+    enum: STATUS_PROFILE,
+  })
+  status: STATUS_PROFILE;
 
   @OneToOne(() => ImageProfile, (image) => image.profile)
   @JoinColumn({ name: 'imageId' })

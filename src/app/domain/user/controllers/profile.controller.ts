@@ -11,6 +11,7 @@ import {
   UploadedFile,
   Put,
   Logger,
+  Req,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -25,6 +26,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { CacheService } from 'src/app/shared/cache/cache.service';
 import { UpdatePhotoProfileDto } from '../dtos/update-photo-ptofile.dto';
 import { ParseFilePipe } from 'src/app/core/pipe/parseFilePipe.pipe';
+import { Request } from 'express';
 
 @Controller('profile')
 export class ProfileController {
@@ -34,37 +36,38 @@ export class ProfileController {
     private readonly cacheService: CacheService,
   ) {}
 
-  @Roles(UserRoles.USER)
-  @UseInterceptors(UserInterceptor)
+  private async getCachedProfile(userId: string) {
+    const cacheKey = `profile=${userId}`;
+    const cacheProfile = await this.cacheService.get<ResponseProfile>(cacheKey);
+    if (cacheProfile) {
+      return {
+        message: 'cached profile',
+        statusCode: HttpStatus.OK,
+        data: cacheProfile,
+      };
+    }
+  }
+
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
   @Throttle({ default: { limit: 10, ttl: 30000 } })
-  @Get()
-  async getProfile(
-    @Query('user_id', ParseUUIDPipe) userId: string,
+  @Get('get')
+  async getProfileUser(
+    @Req() request: Request,
+    @Query('user_id', ParseUUIDPipe) id: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
     try {
-      const cacheKey = `profile=${userId}`;
-      const cacheProfile = await this.cacheService.get<ResponseProfile>(
-        cacheKey,
-      );
-
-      if (cacheProfile) {
-        return {
-          message: 'cached profile',
-          statusCode: HttpStatus.OK,
-          data: cacheProfile,
-        };
-      }
-
-      const profile = await this.profileService.getProfile(userId);
-      await this.cacheService.set(`profile=${userId}`, profile, 30);
+      const { userId } = request.user as { userId: string };
+      await this.getCachedProfile(id);
+      const profile = await this.profileService.getProfile(id, userId);
+      await this.cacheService.set(`profile=${id}`, profile, 30);
       return {
         message: 'Ok',
         statusCode: HttpStatus.OK,
         data: profile,
       };
-    } catch (err) {
-      this.logger.error(err.message);
-      throw err;
+    } catch (error) {
+      this.logger.error(error.message);
+      throw error;
     }
   }
 
@@ -89,7 +92,7 @@ export class ProfileController {
 
   @Roles(UserRoles.USER)
   @UseInterceptors(UserInterceptor)
-  @Patch()
+  @Patch('update')
   async updateProfile(
     @Query('user_id', ParseUUIDPipe) userId: string,
     @Body() body: UpdateProfileDto,

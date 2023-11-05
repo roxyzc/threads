@@ -4,16 +4,23 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
-import { Content } from 'src/app/entities/content.entity';
+import { Content, STATUS_CONTENT } from 'src/app/entities/content.entity';
 import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 import { ImageContent } from 'src/app/entities/imageContent.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../../user/services/user.service';
 import { ResponseContent } from '../dtos/responseContent.dto';
+import { STATUS_PROFILE } from 'src/app/entities/profile.entity';
 
-interface createContent {
+interface ICreateContent {
   content?: string;
   tags?: { name: string }[];
+}
+
+interface IUpdateContent {
+  content?: string;
+  contentId: string;
+  status: STATUS_CONTENT;
 }
 
 @Injectable()
@@ -79,6 +86,7 @@ export class ContentService {
     const start = (page - 1) * limit_item;
     const [data, count] = await this.queryContent()
       .where('content.userId = :userId', { userId })
+      .andWhere('content.status = :', { status: STATUS_CONTENT.public })
       .take(limit_item)
       .skip(start)
       .getManyAndCount();
@@ -89,15 +97,30 @@ export class ContentService {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
     const [data, count] = await this.queryContent()
+      .where('content.status = :status', {
+        status: STATUS_CONTENT.public,
+      })
+      .andWhere('profile.status = :status', { status: STATUS_PROFILE.public })
       .take(limit_item)
       .skip(start)
       .getManyAndCount();
     return { limit_item, start, data, count };
   }
 
-  private async qqueryContentByContentId(contentId: string) {
+  private async queryContentByContentId(contentId: string, userId: string) {
     const data = await this.queryContent()
-      .where('content.contentId = :contentId', { contentId })
+      .where('content.contentId = :contentId AND content.userId = :userId', {
+        contentId,
+        userId,
+      })
+      .orWhere(
+        'content.contentId = :contentId AND content.status = :status_content AND profile.status = :status_profile',
+        {
+          contentId,
+          status_content: STATUS_CONTENT.public,
+          status_profile: STATUS_PROFILE.public,
+        },
+      )
       .getOne();
     return data;
   }
@@ -131,6 +154,35 @@ export class ContentService {
           images_content: content.images.map((image) => image.url),
         }),
     );
+  }
+
+  public async getContentMe(userId: string, limit?: number, page?: number) {
+    try {
+      if (page < 1 || limit < 1) {
+        throw new BadRequestException(
+          'page and pageSize must be positive integers.',
+        );
+      }
+
+      const limit_item = limit > 20 ? 20 : limit;
+      const start = (page - 1) * limit_item;
+      const [data, count] = await this.queryContent()
+        .where('content.userId = :userId', { userId })
+        .andWhere('content.status <> :status', {
+          status: STATUS_CONTENT.deleted,
+        })
+        .take(limit_item)
+        .skip(start)
+        .limit(limit_item)
+        .skip(start)
+        .getManyAndCount();
+
+      const filter_data = this.mapResponseContent(data);
+      const pagination = this.createPagination(count, limit_item, page, start);
+      return { pagination, filter_data };
+    } catch (error) {
+      throw error;
+    }
   }
 
   public async getContentsByUserId(
@@ -171,11 +223,14 @@ export class ContentService {
     }
   }
 
-  public async getContentByContentId(contentId: string) {
+  public async getContentByContentId(contentId: string, userId: string) {
     try {
-      const content = await this.qqueryContentByContentId(contentId);
-      const filter_data = this.mapResponseContent([content]);
+      const content = await this.queryContentByContentId(contentId, userId);
+      if (!content) {
+        throw new NotFoundException('Content not found');
+      }
 
+      const filter_data = this.mapResponseContent([content]);
       return filter_data;
     } catch (error) {
       throw error;
@@ -184,7 +239,7 @@ export class ContentService {
 
   public async createContent(
     userId: string,
-    params: createContent,
+    params: ICreateContent,
     images?: Array<Express.Multer.File>,
   ) {
     let fileId: string[];
@@ -196,9 +251,6 @@ export class ContentService {
 
       await this.entityManager.transaction(async (entityManager) => {
         const user = await this.userService.lockUser(userId, entityManager);
-        if (!user) {
-          throw new NotFoundException('User not found');
-        }
         const createContent = entityManager.create(Content, {
           ...params,
           user,
@@ -228,6 +280,59 @@ export class ContentService {
           await this.gdriveService.deleteFile(id);
         }
       }
+      throw error;
+    }
+  }
+
+  public async updateContent(
+    userId: string,
+    { contentId, content, status }: IUpdateContent,
+  ) {
+    try {
+      await this.entityManager.transaction(async (entityManager) => {
+        const findContent = await this.contentRepository
+          .createQueryBuilder()
+          .where('userId = :userId', { userId })
+          .andWhere('contentId = :contentId', { contentId })
+          .setLock('pessimistic_write')
+          .getRawOne();
+
+        if (!findContent) {
+          throw new NotFoundException('Content not found');
+        }
+
+        await entityManager.update(
+          Content,
+          { contentId },
+          {
+            content: content ?? '',
+            status,
+          },
+        );
+      });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async deleteContent(userId: string, contentId: string) {
+    try {
+      const findContent = await this.contentRepository
+        .createQueryBuilder()
+        .where('userId = :userId', { userId })
+        .andWhere('contentId = :contentId', { contentId })
+        .getRawOne();
+
+      if (!findContent) {
+        throw new NotFoundException('Content not found');
+      }
+
+      await this.entityManager.update(
+        Content,
+        { contentId },
+        { status: STATUS_CONTENT.deleted },
+      );
+    } catch (error) {
       throw error;
     }
   }

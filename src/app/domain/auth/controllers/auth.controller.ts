@@ -24,6 +24,8 @@ import { ResendUserVerificationDto } from '../dtos/verifyUser.dto';
 import { ResponseAuth, ResponseAuthRaw } from '../dtos/response.dto';
 import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { CacheService } from 'src/app/shared/cache/cache.service';
+import { Roles } from 'src/app/core/decorators/roles.decorator';
+import { UserRoles } from 'src/app/entities/user.entity';
 
 @Controller('auth')
 export class AuthController {
@@ -138,14 +140,15 @@ export class AuthController {
     }
   }
 
-  @SkipThrottle()
+  @Roles(UserRoles.ADMIN, UserRoles.USER)
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Get('me')
   async me(
     @Req() request: Request,
   ): Promise<HttpResponse & { data: ResponseAuthRaw }> {
     try {
-      const token = request.cookies['token'];
-      const cacheKey = `me:${token}`;
+      const { userId } = request.user as { userId: string };
+      const cacheKey = `me:${userId}`;
 
       const cachedData = await this.cacheService.get(cacheKey);
       if (cachedData) {
@@ -156,8 +159,8 @@ export class AuthController {
         };
       }
 
-      const data = await this.authService.me(token);
-      await this.cacheService.set(`me:${token}`, data, 30);
+      const data = await this.authService.me(userId);
+      await this.cacheService.set(`me:${userId}`, data, 30);
       return {
         statusCode: HttpStatus.OK,
         message: 'Ok',

@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { GENDER, Profile } from 'src/app/entities/profile.entity';
+import {
+  GENDER,
+  Profile,
+  STATUS_PROFILE,
+} from 'src/app/entities/profile.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { ResponseProfile } from '../dtos/response-profile.dto';
@@ -25,6 +29,7 @@ interface UpdateProfile {
   firstName: string;
   lastName: string;
   bio: string;
+  status: STATUS_PROFILE;
 }
 
 @Injectable()
@@ -67,6 +72,23 @@ export class ProfileService {
     }
 
     return findImage;
+  }
+
+  private queryProfile() {
+    return this.profileRepository
+      .createQueryBuilder('profile')
+      .leftJoinAndSelect('profile.photo', 'image');
+  }
+
+  private responseProfile(profile: Profile) {
+    if (!profile) {
+      throw new NotFoundException('Profile not found');
+    }
+
+    return new ResponseProfile({
+      ...profile,
+      photo: profile.photo?.url ?? null,
+    });
   }
 
   private async getPhotoProfile(fileId: string) {
@@ -141,23 +163,24 @@ export class ProfileService {
     }
   }
 
-  public async getProfile(userId: string): Promise<ResponseProfile> {
+  public async getProfile(
+    id: string,
+    userId: string,
+  ): Promise<ResponseProfile> {
     try {
-      const findProfile = await this.profileRepository
-        .createQueryBuilder('profile')
-        .where('profile.userId = :userId', { userId })
-        .leftJoinAndSelect('profile.photo', 'image')
-        .getOne();
+      const findProfile = this.queryProfile().where(
+        'profile.userId = :userId',
+        { userId: id },
+      );
 
-      if (!findProfile) {
-        throw new NotFoundException('Profile not found');
+      if (userId !== id) {
+        findProfile.andWhere('profile.status = :status', {
+          status: STATUS_PROFILE.public,
+        });
       }
 
-      const data = new ResponseProfile({
-        ...findProfile,
-        photo: findProfile.photo?.url ?? null,
-      });
-      return data;
+      const data = await findProfile.getOne();
+      return this.responseProfile(data);
     } catch (error) {
       throw error;
     }

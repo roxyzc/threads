@@ -6,12 +6,15 @@ import {
   MaxLength,
 } from 'class-validator';
 import { IsAlphaAndSpace } from 'src/app/core/decorators/IsAlphaAndSpace.decorator';
-import { GENDER } from 'src/app/entities/profile.entity';
+import { GENDER, STATUS_PROFILE } from 'src/app/entities/profile.entity';
 
 export class UpdateProfileDto {
   @IsString()
   @IsAlphaAndSpace()
   firstName: string;
+
+  @IsEnum(STATUS_PROFILE)
+  status: STATUS_PROFILE;
 
   @IsOptional()
   @IsString()

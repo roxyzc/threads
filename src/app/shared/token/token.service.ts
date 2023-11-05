@@ -1,10 +1,17 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { TokenPayload } from '../interfaces/token.interface';
+import { Token } from 'src/app/entities/token.entity';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class TokenService {
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    @InjectRepository(Token)
+    private readonly profileRepository: Repository<Token>,
+    private readonly jwtService: JwtService,
+  ) {}
 
   async generateToken(payload: Required<TokenPayload>) {
     const accessToken = this.jwtService.sign(payload);
@@ -12,7 +19,21 @@ export class TokenService {
   }
 
   async verifyToken(token: string): Promise<TokenPayload> {
-    const payload = this.jwtService.verify(token);
-    return payload;
+    try {
+      const findToken = await this.profileRepository
+        .createQueryBuilder('token')
+        .select('token.accessToken')
+        .where('accessToken = :token', { token })
+        .getRawOne();
+
+      if (!findToken) {
+        throw new UnauthorizedException('Token invalid');
+      }
+
+      const payload = this.jwtService.verify(token);
+      return payload;
+    } catch (error) {
+      throw error;
+    }
   }
 }

@@ -32,7 +32,7 @@ export class UserService {
     return findUser;
   }
 
-  public async getUserById(userId: string, select?: string[]): Promise<User> {
+  public async getByUserId(userId: string, select?: string[]): Promise<User> {
     const selectColumns = select;
     const user = this.userRepository
       .createQueryBuilder('user')
@@ -47,6 +47,7 @@ export class UserService {
     return await user
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'image')
+      .leftJoin('user.token', 'token')
       .addSelect([
         'profile.fullName',
         'profile.gender',
