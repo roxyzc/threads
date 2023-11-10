@@ -11,7 +11,6 @@ import {
   UploadedFile,
   Put,
   Logger,
-  Req,
 } from '@nestjs/common';
 import { ProfileService } from '../services/profile.service';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
@@ -20,13 +19,12 @@ import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { UserRoles } from 'src/app/entities/user.entity';
 import { UpdateProfileDto } from '../dtos/update-profile.dto';
 import { HttpResponse } from '../../interfaces/response.interface';
-import { Throttle } from '@nestjs/throttler';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { CacheService } from 'src/app/shared/cache/cache.service';
 import { UpdatePhotoProfileDto } from '../dtos/update-photo-ptofile.dto';
 import { ParseFilePipe } from 'src/app/core/pipe/parseFilePipe.pipe';
-import { Request } from 'express';
+import { GetUser } from 'src/app/core/decorators/getUser.decorator';
 
 @Controller('profile')
 export class ProfileController {
@@ -49,14 +47,12 @@ export class ProfileController {
   }
 
   @Roles(UserRoles.USER, UserRoles.ADMIN)
-  @Throttle({ default: { limit: 10, ttl: 30000 } })
   @Get('get')
   async getProfileUser(
-    @Req() request: Request,
+    @GetUser() { userId }: { userId: string },
     @Query('user_id', ParseUUIDPipe) id: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
     try {
-      const { userId } = request.user as { userId: string };
       await this.getCachedProfile(id);
       const profile = await this.profileService.getProfile(id, userId);
       await this.cacheService.set(`profile=${id}`, profile, 30);

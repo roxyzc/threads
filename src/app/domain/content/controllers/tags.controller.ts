@@ -10,7 +10,6 @@ import {
 import { TagService } from '../services/tag.service';
 import { HttpResponse } from '../../interfaces/response.interface';
 import { Tag } from 'src/app/entities/tag.entity';
-import { SkipThrottle } from '@nestjs/throttler';
 
 @Controller('tag')
 export class TagController {
@@ -19,7 +18,6 @@ export class TagController {
   constructor(private readonly tagService: TagService) {}
 
   @Get('trending')
-  @SkipThrottle()
   async getCalculationTags(
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe)
     limit?: number,

@@ -22,10 +22,10 @@ import { SignupDto } from '../dtos/signup.dto';
 import { ResetPasswordDto } from '../dtos/resetPassword.dto';
 import { ResendUserVerificationDto } from '../dtos/verifyUser.dto';
 import { ResponseAuth, ResponseAuthRaw } from '../dtos/response.dto';
-import { Throttle, SkipThrottle } from '@nestjs/throttler';
 import { CacheService } from 'src/app/shared/cache/cache.service';
 import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { UserRoles } from 'src/app/entities/user.entity';
+import { GetUser } from 'src/app/core/decorators/getUser.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -37,7 +37,6 @@ export class AuthController {
     private readonly cacheService: CacheService,
   ) {}
 
-  @Throttle({ default: { limit: 1, ttl: 60000 } })
   @Post('signup')
   async signup(@Body() signupDto: SignupDto): Promise<HttpResponse> {
     try {
@@ -82,7 +81,6 @@ export class AuthController {
     }
   }
 
-  @SkipThrottle()
   @Delete('logout')
   async logout(
     @Req() request: Request,
@@ -105,7 +103,6 @@ export class AuthController {
     }
   }
 
-  @Throttle({ default: { limit: 1, ttl: 60000 } })
   @Post('resetpassword')
   async resetPassword(
     @Body() { email }: ResetPasswordDto,
@@ -123,7 +120,6 @@ export class AuthController {
     }
   }
 
-  @Throttle({ default: { limit: 1, ttl: 60000 } })
   @Post('resendverification')
   async resendUserVerification(
     @Body() { email }: ResendUserVerificationDto,
@@ -141,13 +137,11 @@ export class AuthController {
   }
 
   @Roles(UserRoles.ADMIN, UserRoles.USER)
-  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Get('me')
   async me(
-    @Req() request: Request,
+    @GetUser() { userId }: { userId: string },
   ): Promise<HttpResponse & { data: ResponseAuthRaw }> {
     try {
-      const { userId } = request.user as { userId: string };
       const cacheKey = `me:${userId}`;
 
       const cachedData = await this.cacheService.get(cacheKey);

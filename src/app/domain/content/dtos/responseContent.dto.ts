@@ -34,7 +34,7 @@ export class ResponseContent {
   likes_content?: number;
 
   @Expose({ name: 'photoProfile' })
-  url: string;
+  url?: string;
 
   constructor(data: Partial<ResponseContent>) {
     Object.assign(this, data);

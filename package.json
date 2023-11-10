@@ -17,7 +17,13 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
-    "test:e2e": "jest --config ./test/jest-e2e.json"
+    "test:e2e": "jest --config ./test/jest-e2e.json",
+    "typeorm": "ts-node ./node_modules/typeorm/cli",
+    "typeorm:win": "ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d ./typeorm.config.ts",
+    "typeorm:generate:win": "yarn typeorm:win migration:generate ./migrations/$npm_config_name",
+    "typeorm:create:win": "yarn typeorm -- migration:create ./migrations/$npm_config_name",
+    "typeorm:run:win": "yarn typeorm:win migration:run ",
+    "typeorm:revert:win": "yarn typeorm:win migration:revert"
   },
   "dependencies": {
     "@nestjs/cache-manager": "^2.1.0",

@@ -79,17 +79,37 @@ export class ContentService {
 
   private async queryContentByUserId(
     userId: string,
+    idMe: string,
     limit: number,
     page: number,
   ) {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
-    const [data, count] = await this.queryContent()
-      .where('content.userId = :userId', { userId })
-      .andWhere('content.status = :', { status: STATUS_CONTENT.public })
+
+    const findContent = this.queryContent().where(
+      'content.userId = :userId AND content.status = :statusContent AND profile.status = :statusProfile',
+      {
+        userId,
+        statusContent: STATUS_CONTENT.public,
+        statusProfile: STATUS_PROFILE.public,
+      },
+    );
+
+    if (userId == idMe) {
+      findContent.orWhere(
+        'content.userId = :userId AND content.status <> :statusContent',
+        {
+          statusContent: STATUS_CONTENT.deleted,
+          userId: idMe,
+        },
+      );
+    }
+
+    const [data, count] = await findContent
       .take(limit_item)
       .skip(start)
       .getManyAndCount();
+
     return { limit_item, start, data, count };
   }
 
@@ -97,10 +117,13 @@ export class ContentService {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
     const [data, count] = await this.queryContent()
-      .where('content.status = :status', {
-        status: STATUS_CONTENT.public,
-      })
-      .andWhere('profile.status = :status', { status: STATUS_PROFILE.public })
+      .where(
+        'content.status = :statusContent AND profile.status = :statusProfile',
+        {
+          statusContent: STATUS_CONTENT.public,
+          statusProfile: STATUS_PROFILE.public,
+        },
+      )
       .take(limit_item)
       .skip(start)
       .getManyAndCount();
@@ -147,46 +170,18 @@ export class ContentService {
       (content) =>
         new ResponseContent({
           ...content,
-          username: content.user.username,
-          url: content.user.profile.photo.url,
-          fullName: content.user.profile.fullName,
+          username: content.user?.username,
+          url: content.user?.profile?.photo?.url ?? '',
+          fullName: content.user?.profile?.fullName,
           tags_content: content.tags.map((tag) => tag.name),
           images_content: content.images.map((image) => image.url),
         }),
     );
   }
 
-  public async getContentMe(userId: string, limit?: number, page?: number) {
-    try {
-      if (page < 1 || limit < 1) {
-        throw new BadRequestException(
-          'page and pageSize must be positive integers.',
-        );
-      }
-
-      const limit_item = limit > 20 ? 20 : limit;
-      const start = (page - 1) * limit_item;
-      const [data, count] = await this.queryContent()
-        .where('content.userId = :userId', { userId })
-        .andWhere('content.status <> :status', {
-          status: STATUS_CONTENT.deleted,
-        })
-        .take(limit_item)
-        .skip(start)
-        .limit(limit_item)
-        .skip(start)
-        .getManyAndCount();
-
-      const filter_data = this.mapResponseContent(data);
-      const pagination = this.createPagination(count, limit_item, page, start);
-      return { pagination, filter_data };
-    } catch (error) {
-      throw error;
-    }
-  }
-
   public async getContentsByUserId(
     userId: string,
+    idMe: string,
     limit?: number,
     page?: number,
   ) {
@@ -198,7 +193,7 @@ export class ContentService {
       }
 
       const { limit_item, start, data, count } =
-        await this.queryContentByUserId(userId, limit, page);
+        await this.queryContentByUserId(userId, idMe, limit, page);
       const filter_data = this.mapResponseContent(data);
       const pagination = this.createPagination(count, limit_item, page, start);
 
