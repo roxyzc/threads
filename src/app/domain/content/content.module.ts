@@ -14,6 +14,7 @@ import { Profile } from 'src/app/entities/profile.entity';
 import { ImageProfile } from 'src/app/entities/imageProfile.entity';
 import { UserModule } from '../user/user.module';
 import { LikeContent } from 'src/app/entities/likeContent.entity';
+import { LikeContentService } from './services/likeContent.service';
 
 @Module({
   imports: [
@@ -29,7 +30,12 @@ import { LikeContent } from 'src/app/entities/likeContent.entity';
     GdriveModule,
     UserModule,
   ],
-  providers: [ContentService, ContentSubscriber, TagService],
+  providers: [
+    ContentService,
+    ContentSubscriber,
+    TagService,
+    LikeContentService,
+  ],
   controllers: [ContentController, TagController],
 })
 export class ContentModule {}

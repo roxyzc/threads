@@ -11,6 +11,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../../user/services/user.service';
 import { ResponseContent } from '../dtos/responseContent.dto';
 import { STATUS_PROFILE } from 'src/app/entities/profile.entity';
+import { LikeContentService } from './likeContent.service';
 
 interface ICreateContent {
   content?: string;
@@ -31,6 +32,7 @@ export class ContentService {
     private readonly entityManager: EntityManager,
     private readonly gdriveService: GdriveService,
     private readonly userService: UserService,
+    private readonly likeContentService: LikeContentService,
   ) {}
 
   private createPagination(
@@ -87,7 +89,7 @@ export class ContentService {
     const start = (page - 1) * limit_item;
 
     const findContent = this.queryContent().where(
-      'content.userId = :userId AND content.status = :statusContent AND profile.status = :statusProfile',
+      'content.userId = :userId AND content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL)',
       {
         userId,
         statusContent: STATUS_CONTENT.public,
@@ -152,6 +154,7 @@ export class ContentService {
     return this.contentRepository
       .createQueryBuilder('content')
       .leftJoin('content.images', 'image')
+      .leftJoin('content.likes', 'like')
       .leftJoin('content.tags', 'tag')
       .leftJoin('content.user', 'user')
       .leftJoin('user.profile', 'profile')
@@ -162,6 +165,7 @@ export class ContentService {
         'user.username',
         'profile.fullName',
         'photoProfile.url',
+        'like.userId',
       ]);
   }
 
@@ -175,6 +179,7 @@ export class ContentService {
           fullName: content.user?.profile?.fullName,
           tags_content: content.tags.map((tag) => tag.name),
           images_content: content.images.map((image) => image.url),
+          likes_content: content.likes.length,
         }),
     );
   }
@@ -327,6 +332,19 @@ export class ContentService {
         { contentId },
         { status: STATUS_CONTENT.deleted },
       );
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async likeContent(contentId: string, userId: string) {
+    try {
+      const content = await this.contentRepository
+        .createQueryBuilder('content')
+        .where('contentId = :contentId', { contentId })
+        .getOne();
+
+      return await this.likeContentService.likeContent(content, userId);
     } catch (error) {
       throw error;
     }

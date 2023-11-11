@@ -155,4 +155,17 @@ export class ContentController {
       statusCode: HttpStatus.OK,
     };
   }
+
+  @Get('like')
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
+  async coba(
+    @Query('content_id', ParseUUIDPipe) contentId: string,
+    @GetUser() { userId }: { userId: string },
+  ): Promise<HttpResponse & { add: boolean; delete: boolean }> {
+    const data = await this.contentService.likeContent(contentId, userId);
+    return {
+      ...data,
+      statusCode: HttpStatus.OK,
+    };
+  }
 }

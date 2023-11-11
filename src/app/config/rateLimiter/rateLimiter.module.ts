@@ -8,8 +8,8 @@ import { ConfigService } from '@nestjs/config';
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => [
         {
-          ttl: Number(configService.get('throttler.ttl', 60000)),
-          limit: Number(configService.get('throttler.limit', 3)),
+          ttl: Number(configService.get('throttler.ttl', 300000)),
+          limit: Number(configService.get('throttler.limit', 1000)),
         },
       ],
     }),

@@ -5,6 +5,7 @@ import { DomainModule } from './app/domain/domain.module';
 import { ExceptionsFilter } from './app/core/filters/exceptions.filter';
 import { RoleGuard } from './app/core/guards/roles.guard';
 import { TokenModule } from './app/shared/token/token.module';
+import { RateLimiterGuard } from './app/core/guards/rateLimiter.guard';
 
 @Module({
   imports: [AppConfigModule, DomainModule, TokenModule],
@@ -16,6 +17,10 @@ import { TokenModule } from './app/shared/token/token.module';
     {
       provide: APP_GUARD,
       useClass: RoleGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RateLimiterGuard,
     },
     {
       provide: APP_INTERCEPTOR,
