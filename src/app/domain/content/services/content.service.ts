@@ -20,7 +20,6 @@ interface ICreateContent {
 
 interface IUpdateContent {
   content?: string;
-  contentId: string;
   status: STATUS_CONTENT;
 }
 
@@ -120,7 +119,7 @@ export class ContentService {
     const start = (page - 1) * limit_item;
     const [data, count] = await this.queryContent()
       .where(
-        'content.status = :statusContent AND profile.status = :statusProfile',
+        'content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL)',
         {
           statusContent: STATUS_CONTENT.public,
           statusProfile: STATUS_PROFILE.public,
@@ -153,20 +152,13 @@ export class ContentService {
   private queryContent() {
     return this.contentRepository
       .createQueryBuilder('content')
-      .leftJoin('content.images', 'image')
-      .leftJoin('content.likes', 'like')
-      .leftJoin('content.tags', 'tag')
+      .leftJoinAndSelect('content.images', 'image')
+      .leftJoinAndSelect('content.likes', 'like')
+      .leftJoinAndSelect('content.tags', 'tag')
       .leftJoin('content.user', 'user')
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'photoProfile')
-      .addSelect([
-        'image.url',
-        'tag.name',
-        'user.username',
-        'profile.fullName',
-        'photoProfile.url',
-        'like.userId',
-      ]);
+      .addSelect(['user.username', 'profile.fullName', 'photoProfile.url']);
   }
 
   private mapResponseContent(data: Content[]) {
@@ -199,6 +191,7 @@ export class ContentService {
 
       const { limit_item, start, data, count } =
         await this.queryContentByUserId(userId, idMe, limit, page);
+
       const filter_data = this.mapResponseContent(data);
       const pagination = this.createPagination(count, limit_item, page, start);
 
@@ -214,6 +207,7 @@ export class ContentService {
         limit,
         page,
       );
+
       const filter_data = this.mapResponseContent(data);
       const pagination = this.createPagination(count, limit_item, page, start);
 
@@ -286,7 +280,8 @@ export class ContentService {
 
   public async updateContent(
     userId: string,
-    { contentId, content, status }: IUpdateContent,
+    contentId: string,
+    { content, status }: IUpdateContent,
   ) {
     try {
       await this.entityManager.transaction(async (entityManager) => {

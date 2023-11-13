@@ -22,6 +22,6 @@ export class LikeContent {
   })
   content: Content;
 
-  @Column({ type: 'varchar', length: 50, unique: true, nullable: false })
+  @Column({ type: 'varchar', length: 50, nullable: false })
   userId: string;
 }

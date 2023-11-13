@@ -20,8 +20,8 @@ export class CreateProfileDto {
 
   @IsEnum(GENDER)
   gender: GENDER;
-
-  @IsString()
-  @IsOptional()
-  photo?: string;
 }
+
+// @IsString()
+// @IsOptional()
+// photo?: string;

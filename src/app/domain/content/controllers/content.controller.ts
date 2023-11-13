@@ -133,9 +133,10 @@ export class ContentController {
   @UseInterceptors(UserInterceptor)
   async updateContent(
     @Query('user_id', ParseUUIDPipe) userId: string,
+    @Query('content_id', ParseUUIDPipe) contentId: string,
     @Body() payload: UpdateContentDto,
   ): Promise<HttpResponse> {
-    await this.contentService.updateContent(userId, payload);
+    await this.contentService.updateContent(userId, contentId, payload);
     return {
       message: 'Updated content successfully',
       statusCode: HttpStatus.OK,
@@ -156,7 +157,7 @@ export class ContentController {
     };
   }
 
-  @Get('like')
+  @Post('like')
   @Roles(UserRoles.USER, UserRoles.ADMIN)
   async coba(
     @Query('content_id', ParseUUIDPipe) contentId: string,

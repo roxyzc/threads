@@ -21,11 +21,14 @@ export class LikeContentService {
     const seconds = '59';
     try {
       const checkLikeContent = await this.queryLikeContent()
-        .where('l.userId = :userId', { userId })
+        .where('l.userId = :userId AND contentId = :contentId', {
+          userId,
+          contentId: content.contentId,
+        })
         .getRawOne();
 
       if (checkLikeContent) {
-        const jobName = `delete_like_${content.contentId}_to_${userId}`;
+        const jobName = `delete_like_${content.contentId}_from_${userId}`;
         const existingJob = this.getJob(jobName);
         if (existingJob) {
           await this.deleteCron(jobName);
@@ -39,7 +42,7 @@ export class LikeContentService {
           return this.responseLikeContent('deleted successfully', true, false);
         }
       } else {
-        const jobName = `like_${content.contentId}_to_${userId}`;
+        const jobName = `like_${content.contentId}_from_${userId}`;
         const existingJob = this.getJob(jobName);
         if (existingJob) {
           await this.deleteCron(jobName);
