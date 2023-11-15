@@ -13,6 +13,7 @@ import {
   DefaultValuePipe,
   Patch,
   Delete,
+  ParseBoolPipe,
 } from '@nestjs/common';
 import { ContentService } from '../services/content.service';
 import { CreateContentDto } from '../dtos/createContent.dto';
@@ -84,9 +85,12 @@ export class ContentController {
     limit?: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe)
     page?: number,
+    @Query('latest', new DefaultValuePipe(false), ParseBoolPipe)
+    latest?: boolean,
+    @Query('s', new DefaultValuePipe('')) search?: string,
   ) {
     try {
-      return await this.contentService.getContent(limit, page);
+      return await this.contentService.getContent(limit, page, latest, search);
     } catch (error) {
       this.logger.error(error.message);
       throw error;
@@ -102,6 +106,8 @@ export class ContentController {
     limit?: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe)
     page?: number,
+    @Query('latest', new DefaultValuePipe(false), ParseBoolPipe)
+    latest?: boolean,
   ): Promise<
     HttpResponse & { data: { pagination?: object; contents: Content[] } }
   > {
@@ -112,6 +118,7 @@ export class ContentController {
           user.userId,
           limit,
           page,
+          latest,
         );
 
       return {

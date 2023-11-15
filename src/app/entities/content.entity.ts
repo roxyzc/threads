@@ -7,6 +7,7 @@ import {
   ManyToMany,
   ManyToOne,
   JoinTable,
+  Index,
 } from 'typeorm';
 import { ImageContent } from './imageContent.entity';
 import { Tag } from './tag.entity';
@@ -25,6 +26,7 @@ export class Content {
   contentId: string;
 
   @Column({ type: 'varchar', nullable: true, length: 500 })
+  @Index('i_fulltext_content', { fulltext: true })
   content: string;
 
   @Column({

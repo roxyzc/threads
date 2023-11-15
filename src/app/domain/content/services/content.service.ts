@@ -83,6 +83,7 @@ export class ContentService {
     idMe: string,
     limit: number,
     page: number,
+    latest: boolean,
   ) {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
@@ -106,6 +107,10 @@ export class ContentService {
       );
     }
 
+    if (latest) {
+      findContent.orderBy('content.createdAt', latest ? 'DESC' : 'ASC');
+    }
+
     const [data, count] = await findContent
       .take(limit_item)
       .skip(start)
@@ -114,17 +119,37 @@ export class ContentService {
     return { limit_item, start, data, count };
   }
 
-  private async queryAllContent(limit: number, page: number) {
+  private async queryAllContent(
+    limit: number,
+    page: number,
+    latest: boolean,
+    search: string,
+  ) {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
-    const [data, count] = await this.queryContent()
-      .where(
-        'content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL)',
+
+    const query = this.queryContent().where(
+      'content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL)',
+      {
+        statusContent: STATUS_CONTENT.public,
+        statusProfile: STATUS_PROFILE.public,
+      },
+    );
+
+    if (search && search !== undefined) {
+      query.andWhere(
+        'MATCH (content.content) AGAINST (:s WITH QUERY EXPANSION)',
         {
-          statusContent: STATUS_CONTENT.public,
-          statusProfile: STATUS_PROFILE.public,
+          s: search,
         },
-      )
+      );
+    }
+
+    if (latest) {
+      query.orderBy('content.createdAt', latest ? 'DESC' : 'ASC');
+    }
+
+    const [data, count] = await query
       .take(limit_item)
       .skip(start)
       .getManyAndCount();
@@ -181,6 +206,7 @@ export class ContentService {
     idMe: string,
     limit?: number,
     page?: number,
+    latest?: boolean,
   ) {
     try {
       if (page < 1 || limit < 1) {
@@ -190,7 +216,7 @@ export class ContentService {
       }
 
       const { limit_item, start, data, count } =
-        await this.queryContentByUserId(userId, idMe, limit, page);
+        await this.queryContentByUserId(userId, idMe, limit, page, latest);
 
       const filter_data = this.mapResponseContent(data);
       const pagination = this.createPagination(count, limit_item, page, start);
@@ -201,11 +227,18 @@ export class ContentService {
     }
   }
 
-  public async getContent(limit: number, page: number) {
+  public async getContent(
+    limit: number,
+    page: number,
+    latest: boolean,
+    search: string,
+  ) {
     try {
       const { count, data, limit_item, start } = await this.queryAllContent(
         limit,
         page,
+        latest,
+        search,
       );
 
       const filter_data = this.mapResponseContent(data);
