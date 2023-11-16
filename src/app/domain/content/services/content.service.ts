@@ -11,7 +11,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { UserService } from '../../user/services/user.service';
 import { ResponseContent } from '../dtos/responseContent.dto';
 import { STATUS_PROFILE } from 'src/app/entities/profile.entity';
-import { LikeContentService } from './likeContent.service';
+import { LikeService } from './like.service';
+import { CommentService } from './comment.service';
 
 interface ICreateContent {
   content?: string;
@@ -31,7 +32,8 @@ export class ContentService {
     private readonly entityManager: EntityManager,
     private readonly gdriveService: GdriveService,
     private readonly userService: UserService,
-    private readonly likeContentService: LikeContentService,
+    private readonly likeService: LikeService,
+    private readonly commentService: CommentService,
   ) {}
 
   private createPagination(
@@ -180,10 +182,19 @@ export class ContentService {
       .leftJoinAndSelect('content.images', 'image')
       .leftJoinAndSelect('content.likes', 'like')
       .leftJoinAndSelect('content.tags', 'tag')
+      .leftJoinAndSelect('content.comments', 'comment')
+      .leftJoinAndSelect('comment.likes', 'clikes')
+      .leftJoinAndSelect('comment.replies', 'replies')
+      .leftJoin('comment.user', 'cuser')
       .leftJoin('content.user', 'user')
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'photoProfile')
-      .addSelect(['user.username', 'profile.fullName', 'photoProfile.url']);
+      .addSelect([
+        'user.username',
+        'profile.fullName',
+        'photoProfile.url',
+        'cuser.username',
+      ]);
   }
 
   private mapResponseContent(data: Content[]) {
@@ -197,6 +208,16 @@ export class ContentService {
           tags_content: content.tags.map((tag) => tag.name),
           images_content: content.images.map((image) => image.url),
           likes_content: content.likes.length,
+          comment_content: content.comments.map((comment) => {
+            return {
+              commentId: comment.commentId,
+              username: comment.user.username,
+              text: comment.text,
+              likes: comment.likes.length,
+              replies: comment.replies.length,
+              created_at: comment.createdAt,
+            };
+          }),
         }),
     );
   }
@@ -372,7 +393,56 @@ export class ContentService {
         .where('contentId = :contentId', { contentId })
         .getOne();
 
-      return await this.likeContentService.likeContent(content, userId);
+      return await this.likeService.likeContent(content, userId);
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  private async getUser(userId: string) {
+    try {
+      const user = await this.userService.getByUserId(userId, [
+        'user.userId',
+        'user.username',
+        'user.email',
+      ]);
+
+      if (!user) {
+        throw new NotFoundException('user not found');
+      }
+
+      return user;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async commentContent(contentId: string, userId: string, text: string) {
+    try {
+      const user = await this.getUser(userId);
+      const content = await this.contentRepository
+        .createQueryBuilder('content')
+        .where('contentId = :contentId', { contentId })
+        .getOne();
+
+      if (!content) {
+        throw new NotFoundException('content not found');
+      }
+
+      await this.commentService.commentContent({ content, user, text });
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async repliesComment(
+    parentComment: string,
+    userId: string,
+    text: string,
+  ) {
+    try {
+      const user = await this.getUser(userId);
+      await this.commentService.repliesComment({ text, user, parentComment });
     } catch (error) {
       throw error;
     }

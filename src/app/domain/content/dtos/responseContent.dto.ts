@@ -1,9 +1,10 @@
 import { Exclude, Expose } from 'class-transformer';
 import { STATUS_CONTENT } from 'src/app/entities/content.entity';
 import { ImageContent } from 'src/app/entities/imageContent.entity';
-import { LikeContent } from 'src/app/entities/likeContent.entity';
 import { Tag } from 'src/app/entities/tag.entity';
 import { User } from 'src/app/entities/user.entity';
+import { Like } from 'src/app/entities/likes.entity';
+import { Comment } from 'src/app/entities/comment.entity';
 
 export class ResponseContent {
   contentId: string;
@@ -29,9 +30,14 @@ export class ResponseContent {
   fullName: string;
 
   @Exclude()
-  likes?: LikeContent[];
+  likes?: Like[];
 
   likes_content?: number;
+
+  @Exclude()
+  comments: Comment[];
+
+  comment_content?: any[];
 
   @Expose({ name: 'photoProfile' })
   url?: string;

@@ -3,25 +3,25 @@ import { EntityManager, Repository } from 'typeorm';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { Content } from 'src/app/entities/content.entity';
-import { LikeContent } from 'src/app/entities/likeContent.entity';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Like } from 'src/app/entities/likes.entity';
 
 @Injectable()
-export class LikeContentService {
-  private logger = new Logger(LikeContentService.name);
+export class LikeService {
+  private logger = new Logger(LikeService.name);
 
   constructor(
-    @InjectRepository(LikeContent)
-    private readonly likeContentRepository: Repository<LikeContent>,
+    @InjectRepository(Like)
+    private readonly LikeRepository: Repository<Like>,
     private schedulerRegistry: SchedulerRegistry,
     private readonly entityManager: EntityManager,
   ) {}
 
   public async likeContent(content: Content, userId: string) {
-    const seconds = '59';
+    const seconds = '30';
     try {
       const checkLikeContent = await this.queryLikeContent()
-        .where('l.userId = :userId AND contentId = :contentId', {
+        .where('l.userId = :userId AND l.contentId = :contentId', {
           userId,
           contentId: content.contentId,
         })
@@ -82,7 +82,7 @@ export class LikeContentService {
   ) {
     return async () => {
       this.logger.log(`Job ${name} running at ${seconds} seconds!`);
-      const likeContent = this.entityManager.create(LikeContent, {
+      const likeContent = this.entityManager.create(Like, {
         content,
         userId,
       });
@@ -104,9 +104,9 @@ export class LikeContentService {
     return async () => {
       this.logger.log(`Job ${name} running at ${seconds} seconds!`);
       try {
-        await this.entityManager.delete(LikeContent, {
+        await this.entityManager.delete(Like, {
           userId,
-          content: content.contentId,
+          contentId: content.contentId,
         });
 
         await this.deleteCron(name);
@@ -130,7 +130,7 @@ export class LikeContentService {
   }
 
   private queryLikeContent() {
-    return this.likeContentRepository.createQueryBuilder('l');
+    return this.LikeRepository.createQueryBuilder('l');
   }
 
   private getJob(name: string) {

@@ -26,6 +26,7 @@ import { HttpResponse } from '../../interfaces/response.interface';
 import { Content } from 'src/app/entities/content.entity';
 import { UpdateContentDto } from '../dtos/updateContent.dto';
 import { GetUser } from 'src/app/core/decorators/getUser.decorator';
+import { CommentContentDto } from '../dtos/comment.dto';
 
 @Controller('content')
 export class ContentController {
@@ -166,7 +167,7 @@ export class ContentController {
 
   @Post('like')
   @Roles(UserRoles.USER, UserRoles.ADMIN)
-  async coba(
+  async likeContent(
     @Query('content_id', ParseUUIDPipe) contentId: string,
     @GetUser() { userId }: { userId: string },
   ): Promise<HttpResponse & { add: boolean; delete: boolean }> {
@@ -174,6 +175,34 @@ export class ContentController {
     return {
       ...data,
       statusCode: HttpStatus.OK,
+    };
+  }
+
+  @Post('comment')
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
+  async commentContent(
+    @Query('content_id', ParseUUIDPipe) contentId: string,
+    @GetUser() { userId }: { userId: string },
+    @Body() { text }: CommentContentDto,
+  ): Promise<HttpResponse> {
+    await this.contentService.commentContent(contentId, userId, text);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'OK',
+    };
+  }
+
+  @Post('comment/replies')
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
+  async repliesComment(
+    @Query('comment_id', ParseUUIDPipe) commentId: string,
+    @GetUser() { userId }: { userId: string },
+    @Body() { text }: CommentContentDto,
+  ): Promise<HttpResponse> {
+    await this.contentService.repliesComment(commentId, userId, text);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'OK',
     };
   }
 }

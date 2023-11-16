@@ -12,7 +12,9 @@ import {
 import { ImageContent } from './imageContent.entity';
 import { Tag } from './tag.entity';
 import { User } from './user.entity';
-import { LikeContent } from './likeContent.entity';
+// import { LikeContent } from './likeContent.entity';
+import { Comment } from './comment.entity';
+import { Like } from './likes.entity';
 
 export enum STATUS_CONTENT {
   public = 'public',
@@ -44,14 +46,17 @@ export class Content {
   @JoinColumn({ name: 'userId' })
   user: User;
 
-  @ManyToMany(() => Tag, { cascade: true, onDelete: 'CASCADE' })
+  @ManyToMany(() => Tag)
   @JoinTable({
     name: 'content_tags',
   })
   tags: Tag[];
 
-  @OneToMany(() => LikeContent, (like) => like.content)
-  likes?: LikeContent[];
+  @OneToMany(() => Comment, (comment) => comment.content)
+  comments: Comment[];
+
+  @OneToMany(() => Like, (like) => like.content)
+  likes?: Like[];
 
   @Column({ type: 'bigint', nullable: true, unsigned: true })
   createdAt: number;
