@@ -12,7 +12,6 @@ import { UserService } from '../../user/services/user.service';
 import { ResponseContent } from '../dtos/responseContent.dto';
 import { STATUS_PROFILE } from 'src/app/entities/profile.entity';
 import { LikeService } from './like.service';
-import { CommentService } from './comment.service';
 
 interface ICreateContent {
   content?: string;
@@ -33,7 +32,6 @@ export class ContentService {
     private readonly gdriveService: GdriveService,
     private readonly userService: UserService,
     private readonly likeService: LikeService,
-    private readonly commentService: CommentService,
   ) {}
 
   private createPagination(
@@ -91,7 +89,7 @@ export class ContentService {
     const start = (page - 1) * limit_item;
 
     const findContent = this.queryContent().where(
-      'content.userId = :userId AND content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL)',
+      'content.userId = :userId AND content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL) AND content.status <> "deleted"',
       {
         userId,
         statusContent: STATUS_CONTENT.public,
@@ -216,6 +214,7 @@ export class ContentService {
               likes: comment.likes.length,
               replies: comment.replies.length,
               created_at: comment.createdAt,
+              updated_at: comment.updatedAt,
             };
           }),
         }),
@@ -399,50 +398,21 @@ export class ContentService {
     }
   }
 
-  private async getUser(userId: string) {
+  public async getContentById(contentId: string): Promise<Content> {
     try {
-      const user = await this.userService.getByUserId(userId, [
-        'user.userId',
-        'user.username',
-        'user.email',
-      ]);
-
-      if (!user) {
-        throw new NotFoundException('user not found');
-      }
-
-      return user;
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  public async commentContent(contentId: string, userId: string, text: string) {
-    try {
-      const user = await this.getUser(userId);
       const content = await this.contentRepository
         .createQueryBuilder('content')
-        .where('contentId = :contentId', { contentId })
+        .where('content.contentId = :contentId AND content.status <> :status', {
+          contentId,
+          status: STATUS_CONTENT.deleted,
+        })
         .getOne();
 
       if (!content) {
-        throw new NotFoundException('content not found');
+        throw new NotFoundException('Content not found');
       }
 
-      await this.commentService.commentContent({ content, user, text });
-    } catch (error) {
-      throw error;
-    }
-  }
-
-  public async repliesComment(
-    parentComment: string,
-    userId: string,
-    text: string,
-  ) {
-    try {
-      const user = await this.getUser(userId);
-      await this.commentService.repliesComment({ text, user, parentComment });
+      return content;
     } catch (error) {
       throw error;
     }

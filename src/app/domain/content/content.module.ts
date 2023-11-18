@@ -17,6 +17,7 @@ import { LikeService } from './services/like.service';
 import { Like } from 'src/app/entities/likes.entity';
 import { Comment } from 'src/app/entities/comment.entity';
 import { CommentService } from './services/comment.service';
+import { commentController } from './controllers/comment.controller';
 
 @Module({
   imports: [
@@ -41,6 +42,6 @@ import { CommentService } from './services/comment.service';
     CommentSubsriber,
     LikeService,
   ],
-  controllers: [ContentController, TagController],
+  controllers: [ContentController, commentController, TagController],
 })
 export class ContentModule {}

@@ -10,6 +10,11 @@ import { User } from './user.entity';
 import { Content } from './content.entity';
 import { Like } from './likes.entity';
 
+export enum STATUS_COMMENT {
+  public = 'public',
+  deleted = 'deleted',
+}
+
 @Entity()
 export class Comment {
   @PrimaryGeneratedColumn('uuid')
@@ -37,6 +42,13 @@ export class Comment {
   })
   @JoinColumn({ name: 'content' })
   content: Content;
+
+  @Column({
+    type: 'enum',
+    enum: STATUS_COMMENT,
+    default: STATUS_COMMENT.public,
+  })
+  status: STATUS_COMMENT;
 
   @Column({ type: 'bigint', nullable: true, unsigned: true })
   createdAt: number;
