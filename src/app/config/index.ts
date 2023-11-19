@@ -38,4 +38,9 @@ export default () => ({
     refreshToken: process.env.GOOGLE_DRIVE_REFRESH_TOKEN,
     redirectUri: process.env.GOOGLE_DRIVE_REDIRECT_URI,
   },
+  redis: {
+    host: process.env.REDIS_HOST,
+    port: process.env.REDIS_PORT,
+    password: process.env.REDIS_PASSWORD,
+  },
 });

@@ -83,8 +83,7 @@ export class CommentService {
   private queryCommentById(commentId: string) {
     return this.queryComment()
       .where('comment.commentId = :commentId', { commentId })
-      .leftJoin('comment.content', 'content')
-      .addSelect(['content.contentId, content.status']);
+      .leftJoinAndSelect('comment.content', 'c');
   }
 
   private mapResponseComment(data: Comment[]) {
@@ -101,8 +100,8 @@ export class CommentService {
               commentId: replies.commentId,
               username: replies.user.username,
               text: replies.text,
-              likes_comment: replies.likes.length ?? 0,
-              replies_comment: replies.replies.length ?? 0,
+              likes_comment: replies?.likes?.length ?? 0,
+              replies_comment: replies?.replies?.length ?? 0,
               created_at: replies.createdAt,
               updated_at: replies.updatedAt,
             };
@@ -112,22 +111,104 @@ export class CommentService {
   }
 
   public async getCommentById(commentId: string) {
+    // const limit = 5;
     try {
       const comment = await this.queryCommentById(commentId)
         .leftJoinAndSelect('comment.likes', 'like')
         .leftJoinAndSelect('comment.replies', 'replies')
-        .leftJoinAndSelect('replies.replies', 'replies_comment')
-        .leftJoinAndSelect('replies.likes', 'replies_like')
+        .leftJoinAndSelect('replies.replies', 'replies_replies')
         .leftJoin('comment.user', 'user')
         .leftJoin('replies.user', 'replies_user')
         .addSelect(['user.username', 'replies_user.username'])
         .getOne();
 
+      // const rawResult = await this.commentRepository
+      //   .createQueryBuilder('comment')
+      //   .where('comment.commentId = :commentId', { commentId })
+      //   .leftJoinAndSelect('comment.likes', 'like')
+      //   .leftJoinAndSelect(
+      //     (qb) => {
+      //       return qb.select('u.username, u.userId').from('user', 'u');
+      //     },
+      //     'u',
+      //     'u.userId = comment.user',
+      //   )
+      //   .leftJoinAndSelect(
+      //     (qb) => {
+      //       return qb
+      //         .select('replies.*')
+      //         .from('comment', 'replies')
+      //         .orderBy('replies.updatedAt', 'DESC')
+      //         .limit(limit + 1);
+      //     },
+      //     'replies',
+      //     'replies.parentCommentCommentId = comment.commentId',
+      //   )
+      //   .leftJoinAndSelect(
+      //     (qb) => {
+      //       return qb
+      //         .select(
+      //           'replies_user.username as replies_user_username, replies_user.userId as replies_user_userId',
+      //         )
+      //         .from('user', 'replies_user');
+      //     },
+      //     'replies_user',
+      //     'replies_user.replies_user_userId = replies.userUserId',
+      //   )
+      //   .leftJoinAndSelect(
+      //     (qb) => {
+      //       return qb
+      //         .select(
+      //           'replies_like.likeId as replies_like_likeId, replies_like.userId as replies_like_userId, replies_like.commentId as replies_like_commentId',
+      //         )
+      //         .from('like', 'replies_like');
+      //     },
+      //     'replies_like',
+      //     'replies_like.replies_like_commentId = replies.commentId',
+      //   )
+      //   .leftJoinAndSelect(
+      //     (qb) => {
+      //       return qb
+      //         .select(
+      //           'replies_replies.parentCommentCommentId as replies_replies_commentId, COUNT(replies_replies.parentCommentCommentId) as count_replies',
+      //         )
+      //         .groupBy('replies_replies.parentCommentCommentId')
+      //         .from('comment', 'replies_replies');
+      //     },
+      //     'replies_replies',
+      //     'replies_replies.replies_replies_commentId = replies.commentId',
+      //   )
+      //   .getRawMany();
+
+      // const data = {
+      //   commentId: rawResult[0].comment_commentId,
+      //   text: rawResult[0].comment_text,
+      //   status: rawResult[0].comment_status,
+      //   createdAt: rawResult[0].comment_createdAt,
+      //   updatedAt: rawResult[0].comment_updatedAt,
+      //   username: rawResult[0].username,
+      // };
+
+      // const result = rawResult.map((raw) => {
+      //   return {
+      //     commentId: raw.commentId,
+      //     text: raw.text,
+      //     status: raw.status,
+      //     createdAt: raw.createdAt,
+      //     updatedAt: raw.updatedAt,
+      //     username: raw.replies_user_username,
+      //     replies: raw.count_replies ?? 0,
+      //   };
+      // });
+
+      // Object.assign(data, { replies: result });
+      // console.log(data);
+
       const filter_data = this.mapResponseComment([comment]);
 
       return filter_data;
     } catch (error) {
-      console.error(error.message);
+      this.logger.error(error.message);
       throw error;
     }
   }
@@ -200,6 +281,7 @@ export class CommentService {
         parentComment: comment,
       });
     } catch (error) {
+      this.logger.error(error.massage);
       throw error;
     }
   }

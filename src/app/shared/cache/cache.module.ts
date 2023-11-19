@@ -14,9 +14,10 @@ import { CacheService } from './cache.service';
         store: (): any =>
           redisStore({
             commandsQueueMaxLength: 10_000,
+            password: configService.get('redis.password'),
             socket: {
-              host: 'localhost',
-              port: 6379,
+              host: configService.get('redis.host'),
+              port: Number(configService.get('redis.port')),
             },
           }),
       }),

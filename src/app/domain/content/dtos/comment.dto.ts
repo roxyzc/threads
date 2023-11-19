@@ -4,6 +4,7 @@ import { STATUS_COMMENT } from 'src/app/entities/comment.entity';
 import { Like } from 'src/app/entities/likes.entity';
 import { Comment } from 'src/app/entities/comment.entity';
 import { User } from 'src/app/entities/user.entity';
+import { Content } from 'src/app/entities/content.entity';
 
 export class CommentDto {
   @IsString()
@@ -21,6 +22,9 @@ export class ResponseCommentDto {
   user: User;
 
   username: string;
+
+  @Exclude()
+  content: Content;
 
   @Exclude()
   status: STATUS_COMMENT;
