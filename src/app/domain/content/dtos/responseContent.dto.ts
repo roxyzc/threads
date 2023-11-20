@@ -37,7 +37,7 @@ export class ResponseContent {
   @Exclude()
   comments: Comment[];
 
-  comment_content?: any[];
+  comment_content?: any[] | number;
 
   @Expose({ name: 'photoProfile' })
   url?: string;

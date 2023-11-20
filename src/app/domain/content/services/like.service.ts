@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { EntityManager, Repository } from 'typeorm';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { Content } from 'src/app/entities/content.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Like } from 'src/app/entities/likes.entity';
+import { Comment } from 'src/app/entities/comment.entity';
 
 @Injectable()
 export class LikeService {
@@ -17,44 +18,53 @@ export class LikeService {
     private readonly entityManager: EntityManager,
   ) {}
 
-  public async likeContent(content: Content, userId: string) {
+  public async likeContent<T>(content: T, userId: string) {
     const seconds = '30';
+    let jobName: string;
+    let checkLikeContent: T;
     try {
-      const checkLikeContent = await this.queryLikeContent()
-        .where('l.userId = :userId AND l.contentId = :contentId', {
-          userId,
-          contentId: content.contentId,
-        })
-        .getRawOne();
-
-      if (checkLikeContent) {
-        const jobName = `delete_like_${content.contentId}_from_${userId}`;
-        const existingJob = this.getJob(jobName);
-        if (existingJob) {
-          await this.deleteCron(jobName);
-          return this.responseLikeContent('nggak jadi', false, false);
-        } else {
-          this.addCronJobOnce(
-            jobName,
-            seconds,
-            this.deleteCb(jobName, seconds, content, userId),
-          );
-          return this.responseLikeContent('deleted successfully', true, false);
-        }
+      if (content instanceof Content) {
+        checkLikeContent = await this.queryLikeContent()
+          .where('l.userId = :userId AND l.contentId = :contentId', {
+            userId,
+            contentId: content.contentId,
+          })
+          .getRawOne();
+        const action = checkLikeContent ? 'delete' : 'like';
+        jobName = `${action}_${content.contentId}_from_${userId}`;
+      } else if (content instanceof Comment) {
+        checkLikeContent = await this.queryLikeContent()
+          .where('l.userId = :userId AND l.commentId = :commentId', {
+            userId,
+            commentId: content.commentId,
+          })
+          .getRawOne();
+        const action = checkLikeContent ? 'delete' : 'like';
+        jobName = `${action}_${content.commentId}_from_${userId}`;
       } else {
-        const jobName = `like_${content.contentId}_from_${userId}`;
-        const existingJob = this.getJob(jobName);
-        if (existingJob) {
-          await this.deleteCron(jobName);
-          return this.responseLikeContent('nggak jadi', false, false);
-        } else {
-          this.addCronJobOnce(
-            jobName,
-            seconds,
-            this.addCb(jobName, seconds, content, userId),
-          );
-          return this.responseLikeContent('add successfully', false, true);
-        }
+        throw new BadRequestException('Type not supported');
+      }
+
+      const existingJob = this.getJob(jobName);
+
+      if (existingJob) {
+        await this.deleteCron(jobName);
+        return this.responseLikeContent('nggak jadi', false, false);
+      } else {
+        const callback = checkLikeContent
+          ? this.deleteCb(jobName, seconds, content, userId)
+          : this.addCb(jobName, seconds, content, userId);
+
+        this.addCronJobOnce(jobName, seconds, callback);
+
+        const successMessage = checkLikeContent
+          ? 'deleted successfully'
+          : 'add successfully';
+        return this.responseLikeContent(
+          successMessage,
+          !checkLikeContent,
+          !!checkLikeContent,
+        );
       }
     } catch (error) {
       this.logger.error(error.message);
@@ -74,20 +84,32 @@ export class LikeService {
     };
   }
 
-  private addCb(
+  private addCb<T extends Comment | Content>(
     name: string,
     seconds: string,
-    content: Content,
+    content: T,
     userId: string,
   ) {
+    let like: any;
     return async () => {
       this.logger.log(`Job ${name} running at ${seconds} seconds!`);
-      const likeContent = this.entityManager.create(Like, {
-        content,
-        userId,
-      });
+
       try {
-        await this.entityManager.save(likeContent);
+        if (content instanceof Content) {
+          like = this.entityManager.create(Like, {
+            content,
+            userId,
+          });
+        } else if (content instanceof Comment) {
+          like = this.entityManager.create(Like, {
+            comment: content,
+            userId,
+          });
+        } else {
+          throw new BadRequestException('Type not supported');
+        }
+
+        await this.entityManager.save(like);
         await this.deleteCron(name);
       } catch (error) {
         this.logger.error(`Error in CronJob: ${error.message}`);
@@ -95,19 +117,28 @@ export class LikeService {
     };
   }
 
-  private deleteCb(
+  private deleteCb<T extends Comment | Content>(
     name: string,
     seconds: string,
-    content: Content,
+    content: T,
     userId: string,
   ) {
     return async () => {
       this.logger.log(`Job ${name} running at ${seconds} seconds!`);
       try {
-        await this.entityManager.delete(Like, {
-          userId,
-          contentId: content.contentId,
-        });
+        if (content instanceof Content) {
+          await this.entityManager.delete(Like, {
+            userId,
+            contentId: content.contentId,
+          });
+        } else if (content instanceof Comment) {
+          await this.entityManager.delete(Like, {
+            userId,
+            commentId: content.commentId,
+          });
+        } else {
+          throw new BadRequestException('Type not supported');
+        }
 
         await this.deleteCron(name);
       } catch (error) {

@@ -158,6 +158,9 @@ export class ContentService {
 
   private async queryContentByContentId(contentId: string, userId: string) {
     const data = await this.queryContent()
+      .leftJoinAndSelect('comment.likes', 'clikes')
+      .leftJoin('comment.user', 'cuser')
+      .addSelect(['cuser.username'])
       .where('content.contentId = :contentId AND content.userId = :userId', {
         contentId,
         userId,
@@ -181,33 +184,25 @@ export class ContentService {
       .leftJoinAndSelect('content.likes', 'like')
       .leftJoinAndSelect('content.tags', 'tag')
       .leftJoinAndSelect('content.comments', 'comment')
-      .leftJoinAndSelect('comment.likes', 'clikes')
       .leftJoinAndSelect('comment.replies', 'replies')
-      .leftJoin('comment.user', 'cuser')
       .leftJoin('content.user', 'user')
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'photoProfile')
-      .addSelect([
-        'user.username',
-        'profile.fullName',
-        'photoProfile.url',
-        'cuser.username',
-      ]);
+      .addSelect(['user.username', 'profile.fullName', 'photoProfile.url']);
   }
 
-  private mapResponseContent(data: Content[]) {
-    return data.map(
-      (content) =>
-        new ResponseContent({
-          ...content,
-          username: content.user?.username,
-          url: content.user?.profile?.photo?.url ?? '',
-          fullName: content.user?.profile?.fullName,
-          tags_content: content.tags.map((tag) => tag.name),
-          images_content: content.images.map((image) => image.url),
-          likes_content: content.likes.length,
-          comment_content: content.comments.map((comment) => {
-            return {
+  private mapResponseContent(data: Content[], includeComments = false) {
+    return data.map((content) => {
+      const responseContent = new ResponseContent({
+        ...content,
+        username: content.user?.username,
+        url: content.user?.profile?.photo?.url ?? '',
+        fullName: content.user?.profile?.fullName,
+        tags_content: content.tags.map((tag) => tag.name),
+        images_content: content.images.map((image) => image.url),
+        likes_content: content.likes.length,
+        comment_content: includeComments
+          ? content.comments.map((comment) => ({
               commentId: comment.commentId,
               username: comment.user.username,
               text: comment.text,
@@ -215,10 +210,12 @@ export class ContentService {
               replies: comment.replies.length,
               created_at: comment.createdAt,
               updated_at: comment.updatedAt,
-            };
-          }),
-        }),
-    );
+            }))
+          : content.comments.length,
+      });
+
+      return responseContent;
+    });
   }
 
   public async getContentsByUserId(
@@ -277,7 +274,7 @@ export class ContentService {
         throw new NotFoundException('Content not found');
       }
 
-      const filter_data = this.mapResponseContent([content]);
+      const filter_data = this.mapResponseContent([content], true);
       return filter_data;
     } catch (error) {
       throw error;

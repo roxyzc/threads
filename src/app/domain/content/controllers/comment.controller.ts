@@ -76,4 +76,17 @@ export class commentController {
       message: 'OK',
     };
   }
+
+  @Post('like')
+  @Roles(UserRoles.USER, UserRoles.ADMIN)
+  async likeContent(
+    @Query('comment_id', ParseUUIDPipe) commentId: string,
+    @GetUser() { userId }: { userId: string },
+  ): Promise<HttpResponse & { add: boolean; delete: boolean }> {
+    const data = await this.commentService.likeContent(commentId, userId);
+    return {
+      ...data,
+      statusCode: HttpStatus.OK,
+    };
+  }
 }
