@@ -18,7 +18,10 @@ export class LikeService {
     private readonly entityManager: EntityManager,
   ) {}
 
-  public async likeContent<T>(content: T, userId: string) {
+  public async likeContent<T extends Comment | Content>(
+    content: T,
+    userId: string,
+  ) {
     const seconds = '30';
     let jobName: string;
     let checkLikeContent: T;
@@ -173,7 +176,7 @@ export class LikeService {
     }
   }
 
-  async deleteCron(name: string) {
+  private async deleteCron(name: string) {
     this.schedulerRegistry.deleteCronJob(name);
     this.logger.log(`Job ${name} deleted!`);
   }

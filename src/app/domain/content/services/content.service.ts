@@ -12,10 +12,11 @@ import { UserService } from '../../user/services/user.service';
 import { ResponseContent } from '../dtos/responseContent.dto';
 import { STATUS_PROFILE } from 'src/app/entities/profile.entity';
 import { LikeService } from './like.service';
+import { Tag } from 'src/app/entities/tag.entity';
 
 interface ICreateContent {
   content?: string;
-  tags?: { name: string }[];
+  tags?: { name: string; createdAt: number }[];
 }
 
 interface IUpdateContent {
@@ -183,7 +184,11 @@ export class ContentService {
       .leftJoinAndSelect('content.images', 'image')
       .leftJoinAndSelect('content.likes', 'like')
       .leftJoinAndSelect('content.tags', 'tag')
-      .leftJoinAndSelect('content.comments', 'comment')
+      .leftJoinAndSelect(
+        'content.comments',
+        'comment',
+        'comment.parentCommentCommentId IS NULL',
+      )
       .leftJoinAndSelect('comment.replies', 'replies')
       .leftJoin('content.user', 'user')
       .leftJoin('user.profile', 'profile')
@@ -293,11 +298,20 @@ export class ContentService {
         folder = await this.gdriveService.createFolder('Content');
       }
 
-      await this.entityManager.transaction(async (entityManager) => {
+      return await this.entityManager.transaction(async (entityManager) => {
         const user = await this.userService.lockUser(userId, entityManager);
+
+        const tags = await entityManager
+          .createQueryBuilder()
+          .insert()
+          .into(Tag)
+          .values(params.tags)
+          .execute();
+
         const createContent = entityManager.create(Content, {
-          ...params,
           user,
+          content: params.content,
+          tags: tags.generatedMaps as Tag[],
         });
         const dataContent = await entityManager.save(createContent);
 
@@ -317,7 +331,6 @@ export class ContentService {
           await entityManager.save(createImage);
         }
       });
-      return;
     } catch (error) {
       if (fileId && fileId.length > 0) {
         for (const id of fileId) {
