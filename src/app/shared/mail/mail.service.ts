@@ -22,9 +22,7 @@ export class MailService {
         from: this.configService.getOrThrow('smtp.user'),
         to: email,
         subject: 'Verify User',
-        html: `${this.configService.get(
-          'frontendUrl',
-        )}/verify/user?token=${token}`,
+        html: `${this.configService.get('frontendUrl')}/verify/?data=${token}`,
       });
     } catch (error) {
       console.log(error.message);
@@ -40,7 +38,7 @@ export class MailService {
         subject: 'Reset Password',
         html: `${this.configService.get(
           'frontendUrl',
-        )}/resetpassword?token=${token}`,
+        )}/verify/resetPassword?data=${token}`,
       });
     } catch (error) {
       console.log(error.message);
