@@ -22,7 +22,7 @@ export class MailService {
         from: this.configService.getOrThrow('smtp.user'),
         to: email,
         subject: 'Verify User',
-        html: `${this.configService.get('frontendUrl')}/verify/?data=${token}`,
+        html: `${this.configService.get('frontendUrl')}/verify?data=${token}`,
       });
     } catch (error) {
       console.log(error.message);
