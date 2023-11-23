@@ -15,6 +15,7 @@ import { ResponseProfile } from '../dtos/response-profile.dto';
 import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 import { ImageProfile } from 'src/app/entities/imageProfile.entity';
 import { UserService } from './user.service';
+import { CacheService } from 'src/app/shared/cache/cache.service';
 
 interface CreateProfile {
   firstName: string;
@@ -40,7 +41,16 @@ export class ProfileService {
     private readonly userService: UserService,
     private readonly entityManager: EntityManager,
     private readonly gdriveService: GdriveService,
+    private readonly cacheService: CacheService,
   ) {}
+
+  private async getCachedProfile(userId: string) {
+    const cacheKey = `profile=${userId}`;
+    const cacheProfile = await this.cacheService.get<ResponseProfile>(cacheKey);
+    if (cacheProfile) {
+      return cacheProfile;
+    }
+  }
 
   private async lockProfile(userId: string, entityManager: EntityManager) {
     const findProfile = await entityManager
@@ -168,6 +178,11 @@ export class ProfileService {
     userId: string,
   ): Promise<ResponseProfile> {
     try {
+      const cache = await this.getCachedProfile(id);
+      if (cache) {
+        return cache;
+      }
+
       const findProfile = this.queryProfile().where(
         'profile.userId = :userId',
         { userId: id },
@@ -180,7 +195,9 @@ export class ProfileService {
       }
 
       const data = await findProfile.getOne();
-      return this.responseProfile(data);
+      const response = this.responseProfile(data);
+      await this.cacheService.set(`profile=${id}`, response, 30);
+      return response;
     } catch (error) {
       throw error;
     }

@@ -22,7 +22,6 @@ import { SignupDto } from '../dtos/signup.dto';
 import { ResetPasswordDto } from '../dtos/resetPassword.dto';
 import { ResendUserVerificationDto } from '../dtos/verifyUser.dto';
 import { ResponseAuth, ResponseAuthRaw } from '../dtos/response.dto';
-import { CacheService } from 'src/app/shared/cache/cache.service';
 import { Roles } from 'src/app/core/decorators/roles.decorator';
 import { UserRoles } from 'src/app/entities/user.entity';
 import { GetUser } from 'src/app/core/decorators/getUser.decorator';
@@ -34,7 +33,6 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
-    private readonly cacheService: CacheService,
   ) {}
 
   @Post('signup')
@@ -142,19 +140,7 @@ export class AuthController {
     @GetUser() { userId }: { userId: string },
   ): Promise<HttpResponse & { data: ResponseAuthRaw }> {
     try {
-      const cacheKey = `me:${userId}`;
-
-      const cachedData = await this.cacheService.get(cacheKey);
-      if (cachedData) {
-        return {
-          statusCode: HttpStatus.OK,
-          message: 'Ok',
-          data: new ResponseAuthRaw(cachedData),
-        };
-      }
-
       const data = await this.authService.me(userId);
-      await this.cacheService.set(`me:${userId}`, data, 30);
       return {
         statusCode: HttpStatus.OK,
         message: 'Ok',

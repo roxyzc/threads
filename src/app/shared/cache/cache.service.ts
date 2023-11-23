@@ -10,14 +10,19 @@ export class CacheService {
   ) {}
 
   async get<T = unknown>(key: string) {
-    return this.cache.get<T>(key);
+    return await this.cache.get<T>(key);
+  }
+
+  async exists<T = unknown>(key: string): Promise<boolean> {
+    const cachedValue = await this.cache.get<T>(key);
+    return cachedValue !== null;
   }
 
   async set(key: string, value: any, seconds = 600) {
-    return this.cache.set(key, value, { ttl: seconds }, null);
+    return await this.cache.set(key, value, { ttl: seconds }, null);
   }
 
   async del(key: string) {
-    return this.cache.del(key);
+    return await this.cache.del(key);
   }
 }

@@ -21,7 +21,6 @@ import { UpdateProfileDto } from '../dtos/update-profile.dto';
 import { HttpResponse } from '../../interfaces/response.interface';
 import { ResponseProfile } from '../dtos/response-profile.dto';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { CacheService } from 'src/app/shared/cache/cache.service';
 import { UpdatePhotoProfileDto } from '../dtos/update-photo-ptofile.dto';
 import { ParseFilePipe } from 'src/app/core/pipe/parseFilePipe.pipe';
 import { GetUser } from 'src/app/core/decorators/getUser.decorator';
@@ -29,22 +28,7 @@ import { GetUser } from 'src/app/core/decorators/getUser.decorator';
 @Controller('profile')
 export class ProfileController {
   private readonly logger = new Logger(ProfileController.name);
-  constructor(
-    private readonly profileService: ProfileService,
-    private readonly cacheService: CacheService,
-  ) {}
-
-  private async getCachedProfile(userId: string) {
-    const cacheKey = `profile=${userId}`;
-    const cacheProfile = await this.cacheService.get<ResponseProfile>(cacheKey);
-    if (cacheProfile) {
-      return {
-        message: 'cached profile',
-        statusCode: HttpStatus.OK,
-        data: cacheProfile,
-      };
-    }
-  }
+  constructor(private readonly profileService: ProfileService) {}
 
   @Roles(UserRoles.USER, UserRoles.ADMIN)
   @Get('get')
@@ -53,9 +37,7 @@ export class ProfileController {
     @Query('user_id', ParseUUIDPipe) id: string,
   ): Promise<HttpResponse & { data: ResponseProfile }> {
     try {
-      await this.getCachedProfile(id);
       const profile = await this.profileService.getProfile(id, userId);
-      await this.cacheService.set(`profile=${id}`, profile, 30);
       return {
         message: 'Ok',
         statusCode: HttpStatus.OK,
@@ -95,7 +77,6 @@ export class ProfileController {
   ): Promise<HttpResponse> {
     try {
       await this.profileService.updateProfile(userId, body);
-      await this.cacheService.del(`profile=${userId}`);
       return {
         message: 'Profile updated successfully',
         statusCode: HttpStatus.OK,

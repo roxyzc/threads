@@ -73,7 +73,7 @@ export class UserService {
     }
 
     if (username) {
-      queryBuilder.andWhere('username = :username', { username });
+      queryBuilder.orWhere('username = :username', { username });
     }
 
     if (raw) {

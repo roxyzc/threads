@@ -22,6 +22,7 @@ import { TokenPayload } from 'src/app/shared/interfaces/token.interface';
 import { comparePassword } from 'src/app/utils/hash.util';
 import { UserService } from '../../user/services/user.service';
 import { generateUsernameUnique } from 'src/app/utils/generate';
+import { CacheService } from 'src/app/shared/cache/cache.service';
 
 @Injectable({ scope: Scope.DEFAULT })
 export class AuthService {
@@ -31,6 +32,7 @@ export class AuthService {
     private readonly mailService: MailService,
     private readonly configService: ConfigService,
     private readonly userService: UserService,
+    private readonly cacheService: CacheService,
   ) {}
 
   public async signup({
@@ -99,27 +101,28 @@ export class AuthService {
   }
 
   public async resetPassword(email: string) {
-    try {
-      const findUser = await this.userService.getUserByUsernameOrEmail(
-        { email },
-        ['user.userId'],
-      );
-      if (!findUser) {
-        throw new NotFoundException('User not found');
-      }
-
-      if (findUser.active === UserActive.INACTIVE) {
-        throw new BadRequestException('User is inactive');
-      }
-
-      const verificationToken = await this.generateVerificationToken(email);
-      await this.mailService.sendResetPassword(email, verificationToken);
-    } catch (error) {
-      throw error;
-    }
+    await this.processEmailRequest(
+      email,
+      'sendResetPassword',
+      'Password reset request is in cooldown',
+    );
   }
 
   public async resendUserVerification(email: string) {
+    await this.processEmailRequest(
+      email,
+      'sendVerifyUser',
+      'Password reset request is in cooldown',
+      true,
+    );
+  }
+
+  private async processEmailRequest(
+    email: string,
+    emailType: 'sendResetPassword' | 'sendVerifyUser',
+    cooldownMessage: string,
+    isVerification = false,
+  ) {
     try {
       const user = await this.userService.getUserByUsernameOrEmail({ email });
 
@@ -127,12 +130,34 @@ export class AuthService {
         throw new NotFoundException('User not found');
       }
 
-      if (user.active === UserActive.ACTIVE) {
-        throw new BadRequestException('User is active');
+      const cooldownKey = `${emailType}:${email}`;
+      const cooldownExists = await this.cacheService.exists(cooldownKey);
+
+      if (cooldownExists) {
+        throw new BadRequestException(cooldownMessage);
       }
 
+      if (
+        (isVerification && user.active === UserActive.ACTIVE) ||
+        (!isVerification && user.active === UserActive.INACTIVE)
+      ) {
+        const errorMessage = isVerification
+          ? 'User is active'
+          : 'User is inactive';
+        throw new BadRequestException(errorMessage);
+      }
+
+      await this.cacheService.set(cooldownKey, 'cooldown', 60);
       const verificationToken = await this.generateVerificationToken(email);
-      await this.mailService.sendVerifyUser(email, verificationToken);
+
+      switch (emailType) {
+        case 'sendResetPassword':
+          await this.mailService.sendResetPassword(email, verificationToken);
+          break;
+        case 'sendVerifyUser':
+          await this.mailService.sendVerifyUser(email, verificationToken);
+          break;
+      }
     } catch (error) {
       throw error;
     }
@@ -184,6 +209,11 @@ export class AuthService {
 
   public async me(userId: string) {
     try {
+      const cacheKey = `me:${userId}`;
+      const cachedData = await this.cacheService.get<ResponseAuthRaw>(cacheKey);
+      if (cachedData) {
+        return new ResponseAuthRaw(cachedData);
+      }
       const user = await this.userService.getByUserId(userId, [
         'user.userId',
         'user.username',
@@ -198,13 +228,17 @@ export class AuthService {
         throw new NotFoundException('user not found');
       }
 
-      return new ResponseAuthRaw({
+      const data = new ResponseAuthRaw({
         ...user,
         username: reverseSlug(user.username),
         fullName: user?.profile?.fullName,
         gender: user?.profile?.gender,
         image: user?.profile?.photo?.url,
       });
+
+      await this.cacheService.set(cacheKey, data, 60);
+
+      return data;
     } catch (error) {
       if (error instanceof UnauthorizedException) {
         throw new UnauthorizedException('token invalid');
