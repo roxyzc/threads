@@ -232,13 +232,12 @@ export class AuthService {
   }
 
   private async validateUser(user: User, password: string) {
-    if (user.active === UserActive.INACTIVE) {
-      throw new ForbiddenException('User not active');
-    }
-
     const isMatch = await comparePassword(password, user.password);
     if (!isMatch) {
       throw new UnauthorizedException('Password not match');
+    }
+    if (user.active === UserActive.INACTIVE) {
+      throw new ForbiddenException('User not active');
     }
   }
 
