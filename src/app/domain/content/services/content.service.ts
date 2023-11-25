@@ -3,7 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { EntityManager, Repository } from 'typeorm';
+import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 import { Content, STATUS_CONTENT } from 'src/app/entities/content.entity';
 import { GdriveService } from 'src/app/shared/gdrive/gdrive.service';
 import { ImageContent } from 'src/app/entities/imageContent.entity';
@@ -89,7 +89,7 @@ export class ContentService {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
 
-    const findContent = this.queryContent().where(
+    const findContent = this.queryContent(idMe).where(
       'content.userId = :userId AND content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL) AND content.status <> "deleted"',
       {
         userId,
@@ -121,6 +121,7 @@ export class ContentService {
   }
 
   private async queryAllContent(
+    queryContent: SelectQueryBuilder<Content>,
     limit: number,
     page: number,
     latest: boolean,
@@ -129,7 +130,7 @@ export class ContentService {
     const limit_item = limit > 20 ? 20 : limit;
     const start = (page - 1) * limit_item;
 
-    const query = this.queryContent().where(
+    const query = queryContent.where(
       'content.status = :statusContent AND (profile.status = :statusProfile OR profile.status IS NULL)',
       {
         statusContent: STATUS_CONTENT.public,
@@ -158,10 +159,9 @@ export class ContentService {
   }
 
   private async queryContentByContentId(contentId: string, userId: string) {
-    const data = await this.queryContent()
+    const data = await this.queryContent(userId)
       .leftJoinAndSelect('comment.likes', 'clikes')
-      .leftJoin('comment.user', 'cuser')
-      .addSelect(['cuser.username'])
+      .leftJoinAndSelect('comment.replies', 'replies')
       .where('content.contentId = :contentId AND content.userId = :userId', {
         contentId,
         userId,
@@ -178,7 +178,7 @@ export class ContentService {
     return data;
   }
 
-  private queryContent() {
+  private queryContent(userId: string) {
     return this.contentRepository
       .createQueryBuilder('content')
       .leftJoinAndSelect('content.images', 'image')
@@ -189,34 +189,69 @@ export class ContentService {
         'comment',
         'comment.parentCommentCommentId IS NULL',
       )
-      .leftJoinAndSelect('comment.replies', 'replies')
+      .leftJoin('comment.user', 'cuser')
+      .leftJoin('cuser.profile', 'cprofile')
+      .leftJoin('cprofile.photo', 'cphotoProfile')
+      .leftJoin('content.reposts', 'repost', 'repost.userId = :userId', {
+        userId,
+      })
       .leftJoin('content.user', 'user')
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'photoProfile')
-      .addSelect(['user.username', 'profile.fullName', 'photoProfile.url']);
+      .addSelect([
+        'user.username',
+        'profile.profileId',
+        'profile.isVerified',
+        'photoProfile.url',
+        'cuser.username',
+        'cprofile.profileId',
+        'cphotoProfile.url',
+        'repost.userId',
+      ]);
   }
 
-  private mapResponseContent(data: Content[], includeComments = false) {
+  private mapResponseContent(
+    data: Content[],
+    includeComments = false,
+    userId: string,
+  ) {
     return data.map((content) => {
       const responseContent = new ResponseContent({
         ...content,
-        username: content.user?.username,
-        url: content.user?.profile?.photo?.url ?? '',
-        fullName: content.user?.profile?.fullName,
-        tags_content: content.tags.map((tag) => tag.name),
-        images_content: content.images.map((image) => image.url),
-        likes_content: content.likes.length,
-        comment_content: includeComments
+        content: {
+          text: content.content,
+          images: content.images.map((image) => image.url),
+          hastags: content.tags.map((tag) => tag.name),
+        },
+        isLiked: content.likes?.some((like) => like.userId === userId) ?? false,
+        isVerified: content.user?.profile.isVerified ?? false,
+        IsReposted:
+          content.reposts?.some((repost) => repost.userId === userId) ?? false,
+        likeCount: content.likes.length,
+        replies: includeComments
           ? content.comments.map((comment) => ({
-              commentId: comment.commentId,
+              id: comment.commentId,
               username: comment.user.username,
               text: comment.text,
-              likes: comment.likes.length,
+              likeCount: comment.likes.length,
+              isLiked:
+                comment.likes?.some((like) => like.userId === userId) ?? false,
+              imageProfile: comment.user?.profile?.photo?.url,
               replies: comment.replies.length,
               created_at: comment.createdAt,
               updated_at: comment.updatedAt,
             }))
-          : content.comments.length,
+          : {
+              count: content.comments.length,
+              imagesProfile: [
+                ...new Set(
+                  content?.comments?.map(
+                    (comment) => comment.user?.profile?.photo?.url,
+                  ),
+                ),
+              ],
+            },
+        url: content.user?.profile?.photo?.url,
       });
 
       return responseContent;
@@ -240,7 +275,7 @@ export class ContentService {
       const { limit_item, start, data, count } =
         await this.queryContentByUserId(userId, idMe, limit, page, latest);
 
-      const filter_data = this.mapResponseContent(data);
+      const filter_data = this.mapResponseContent(data, false, idMe);
       const pagination = this.createPagination(count, limit_item, page, start);
 
       return { pagination, filter_data };
@@ -250,6 +285,7 @@ export class ContentService {
   }
 
   public async getContent(
+    userId: string,
     limit: number,
     page: number,
     latest: boolean,
@@ -257,13 +293,14 @@ export class ContentService {
   ) {
     try {
       const { count, data, limit_item, start } = await this.queryAllContent(
+        this.queryContent(userId),
         limit,
         page,
         latest,
         search,
       );
 
-      const filter_data = this.mapResponseContent(data);
+      const filter_data = this.mapResponseContent(data, false, userId);
       const pagination = this.createPagination(count, limit_item, page, start);
 
       return { pagination, filter_data };
@@ -279,7 +316,7 @@ export class ContentService {
         throw new NotFoundException('Content not found');
       }
 
-      const filter_data = this.mapResponseContent([content], true);
+      const filter_data = this.mapResponseContent([content], true, userId);
       return filter_data;
     } catch (error) {
       throw error;
@@ -421,6 +458,22 @@ export class ContentService {
       if (!content) {
         throw new NotFoundException('Content not found');
       }
+
+      return content;
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  public async doesContentExist(contentId: string): Promise<boolean> {
+    try {
+      const content = await this.contentRepository
+        .createQueryBuilder('content')
+        .where('content.contentId = :contentId AND content.status <> :status', {
+          contentId,
+          status: STATUS_CONTENT.deleted,
+        })
+        .getExists();
 
       return content;
     } catch (error) {

@@ -49,6 +49,12 @@ export class Profile {
   })
   status: STATUS_PROFILE;
 
+  @Column({
+    type: 'boolean',
+    default: false,
+  })
+  isVerified: boolean;
+
   @OneToOne(() => ImageProfile, (image) => image.profile)
   @JoinColumn({ name: 'imageId' })
   photo?: ImageProfile;

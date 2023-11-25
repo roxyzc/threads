@@ -18,15 +18,16 @@ import { CommentDto } from '../dtos/comment.dto';
 import { UserInterceptor } from 'src/app/core/interceptors/user.interceptor';
 
 @Controller('comment')
-export class commentController {
+export class CommentController {
   constructor(private readonly commentService: CommentService) {}
 
   @Get()
   @Roles(UserRoles.USER, UserRoles.ADMIN)
   async getComment(
     @Query('comment_id', ParseUUIDPipe) commentId: string,
+    @GetUser() { userId }: { userId: string },
   ): Promise<HttpResponse & { data: any }> {
-    const data = await this.commentService.getCommentById(commentId);
+    const data = await this.commentService.getCommentById(commentId, userId);
     return {
       statusCode: HttpStatus.OK,
       message: 'OK',
@@ -67,8 +68,8 @@ export class commentController {
   @UseInterceptors(UserInterceptor)
   async updateComment(
     @Query('comment_id', ParseUUIDPipe) commentId: string,
+    @Query('user_id', ParseUUIDPipe) userId: string,
     @Body() { text }: CommentDto,
-    @GetUser() { userId }: { userId: string },
   ) {
     await this.commentService.updateComment({ commentId, userId, text });
     return {
@@ -79,9 +80,10 @@ export class commentController {
 
   @Post('like')
   @Roles(UserRoles.USER, UserRoles.ADMIN)
+  @UseInterceptors(UserInterceptor)
   async likeContent(
     @Query('comment_id', ParseUUIDPipe) commentId: string,
-    @GetUser() { userId }: { userId: string },
+    @Query('user_id', ParseUUIDPipe) userId: string,
   ): Promise<HttpResponse & { add: boolean; delete: boolean }> {
     const data = await this.commentService.likeContent(commentId, userId);
     return {

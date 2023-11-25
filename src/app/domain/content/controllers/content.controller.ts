@@ -23,7 +23,6 @@ import { UserRoles } from 'src/app/entities/user.entity';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { ParseFilesPipe } from 'src/app/core/pipe/parseFilesPipe.pipe';
 import { HttpResponse } from '../../interfaces/response.interface';
-import { Content } from 'src/app/entities/content.entity';
 import { UpdateContentDto } from '../dtos/updateContent.dto';
 import { GetUser } from 'src/app/core/decorators/getUser.decorator';
 
@@ -81,6 +80,7 @@ export class ContentController {
   @Get('get')
   @Roles(UserRoles.USER, UserRoles.ADMIN)
   async getContents(
+    @GetUser() { userId }: { userId: string },
     @Query('limit', new DefaultValuePipe(10), ParseIntPipe)
     limit?: number,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe)
@@ -90,7 +90,13 @@ export class ContentController {
     @Query('s', new DefaultValuePipe('')) search?: string,
   ) {
     try {
-      return await this.contentService.getContent(limit, page, latest, search);
+      return await this.contentService.getContent(
+        userId,
+        limit,
+        page,
+        latest,
+        search,
+      );
     } catch (error) {
       this.logger.error(error.message);
       throw error;
@@ -108,9 +114,7 @@ export class ContentController {
     page?: number,
     @Query('latest', new DefaultValuePipe(false), ParseBoolPipe)
     latest?: boolean,
-  ): Promise<
-    HttpResponse & { data: { pagination?: object; contents: Content[] } }
-  > {
+  ) {
     try {
       const { pagination, filter_data } =
         await this.contentService.getContentsByUserId(
@@ -166,9 +170,10 @@ export class ContentController {
 
   @Post('like')
   @Roles(UserRoles.USER, UserRoles.ADMIN)
+  @UseInterceptors(UserInterceptor)
   async likeContent(
     @Query('content_id', ParseUUIDPipe) contentId: string,
-    @GetUser() { userId }: { userId: string },
+    @Query('user_id', ParseUUIDPipe) userId: string,
   ): Promise<HttpResponse & { add: boolean; delete: boolean }> {
     const data = await this.contentService.likeContent(contentId, userId);
     return {

@@ -15,6 +15,7 @@ import { User } from './user.entity';
 // import { LikeContent } from './likeContent.entity';
 import { Comment } from './comment.entity';
 import { Like } from './likes.entity';
+import { Repost } from './repost.entity';
 
 export enum STATUS_CONTENT {
   public = 'public',
@@ -57,6 +58,9 @@ export class Content {
 
   @OneToMany(() => Like, (like) => like.content)
   likes?: Like[];
+
+  @OneToMany(() => Repost, (repost) => repost.content)
+  reposts?: Repost[];
 
   @Column({ type: 'bigint', nullable: true, unsigned: true })
   createdAt: number;

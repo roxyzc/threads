@@ -147,7 +147,7 @@ export class AuthService {
         throw new BadRequestException(errorMessage);
       }
 
-      await this.cacheService.set(cooldownKey, 'cooldown', 60);
+      await this.cacheService.set(cooldownKey, 'cooldown', 180);
       const verificationToken = await this.generateVerificationToken(email);
 
       switch (emailType) {

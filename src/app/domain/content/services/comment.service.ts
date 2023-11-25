@@ -88,22 +88,28 @@ export class CommentService {
       .leftJoinAndSelect('comment.content', 'c');
   }
 
-  private mapResponseComment(data: Comment[]) {
+  private mapResponseComment(data: Comment[], userId: string) {
     return data.map(
       (comment) =>
         new ResponseCommentDto({
           ...comment,
-          likes_comment: comment.likes.length ?? 0,
+          likeCount: comment.likes.length ?? 0,
+          isLiked:
+            comment.likes?.some((like) => like.userId === userId) ?? false,
           username: comment.user.username,
+          imageProfile: comment.user?.profile?.photo.url,
           createdAt: comment.createdAt,
           updatedAt: comment.updatedAt,
           replies_comment: comment.replies.map((replies) => {
             return {
-              commentId: replies.commentId,
-              username: replies.user.username,
+              id: replies.commentId,
               text: replies.text,
-              likes_comment: replies?.likes?.length ?? 0,
-              replies_comment: replies?.replies?.length ?? 0,
+              username: replies.user.username,
+              isLiked:
+                replies.likes?.some((like) => like.userId === userId) ?? false,
+              imageProfile: replies.user?.profile?.photo.url,
+              likeCount: replies?.likes?.length ?? 0,
+              repliesCount: replies?.replies?.length ?? 0,
               created_at: replies.createdAt,
               updated_at: replies.updatedAt,
             };
@@ -112,18 +118,29 @@ export class CommentService {
     );
   }
 
-  public async getCommentById(commentId: string) {
+  public async getCommentById(commentId: string, userId: string) {
     try {
       const comment = await this.queryCommentById(commentId)
         .leftJoinAndSelect('comment.likes', 'like')
         .leftJoinAndSelect('comment.replies', 'replies')
         .leftJoinAndSelect('replies.replies', 'replies_replies')
         .leftJoin('comment.user', 'user')
+        .leftJoin('user.profile', 'profile')
+        .leftJoin('profile.photo', 'photoProfile')
         .leftJoin('replies.user', 'replies_user')
-        .addSelect(['user.username', 'replies_user.username'])
+        .leftJoin('replies_user.profile', 'replies_profile')
+        .leftJoin('replies_profile.photo', 'replies_photoProfile')
+        .addSelect([
+          'user.username',
+          'profile.profileId',
+          'photoProfile.url',
+          'replies_user.username',
+          'replies_profile.profileId',
+          'replies_photoProfile.url',
+        ])
         .getOne();
 
-      const filter_data = this.mapResponseComment([comment]);
+      const filter_data = this.mapResponseComment([comment], userId);
 
       return filter_data;
     } catch (error) {

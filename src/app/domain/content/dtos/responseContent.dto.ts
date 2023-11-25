@@ -6,21 +6,45 @@ import { User } from 'src/app/entities/user.entity';
 import { Like } from 'src/app/entities/likes.entity';
 import { Comment } from 'src/app/entities/comment.entity';
 
+type ReplyItem = {
+  id: string;
+  username: string;
+  text: string;
+  likeCount: number;
+  isLiked: boolean;
+  imageProfile: string;
+  replies: number;
+  created_at: number;
+  updated_at: number;
+};
+
+type RepliesDataArray = ReplyItem[];
+
+type RepliesDataObject = {
+  count: number;
+  imagesProfile: string[];
+};
+
+type RepliesData = RepliesDataArray | RepliesDataObject;
+
 export class ResponseContent {
+  @Expose({ name: 'id' })
   contentId: string;
-  content: string;
-  createdAt: number;
-  updatedAt: number;
+
+  @Expose()
+  content: {
+    text: string;
+    images: string[];
+    hastags: string[];
+  };
+
+  isVerified: boolean;
 
   @Exclude()
   images: ImageContent[];
 
-  images_content: string[];
-
   @Exclude()
   tags: Tag[];
-
-  tags_content: string[];
 
   @Exclude()
   user: User;
@@ -32,15 +56,23 @@ export class ResponseContent {
   @Exclude()
   likes?: Like[];
 
-  likes_content?: number;
+  isLiked?: boolean;
+
+  likeCount?: number;
+
+  replies: RepliesData;
+
+  IsReposted: boolean;
 
   @Exclude()
   comments: Comment[];
 
-  comment_content?: any[] | number;
-
-  @Expose({ name: 'photoProfile' })
+  @Expose({ name: 'imageProfile' })
   url?: string;
+
+  createdAt: number;
+
+  updatedAt: number;
 
   constructor(data: Partial<ResponseContent>) {
     Object.assign(this, data);

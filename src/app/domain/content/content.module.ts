@@ -17,7 +17,10 @@ import { LikeService } from './services/like.service';
 import { Like } from 'src/app/entities/likes.entity';
 import { Comment } from 'src/app/entities/comment.entity';
 import { CommentService } from './services/comment.service';
-import { commentController } from './controllers/comment.controller';
+import { CommentController } from './controllers/comment.controller';
+import { Repost } from 'src/app/entities/repost.entity';
+import { RepostService } from './services/repost.service';
+import { RepostController } from './controllers/repost.controller';
 
 @Module({
   imports: [
@@ -30,6 +33,7 @@ import { commentController } from './controllers/comment.controller';
       ImageProfile,
       Like,
       Comment,
+      Repost,
     ]),
     GdriveModule,
     UserModule,
@@ -40,8 +44,14 @@ import { commentController } from './controllers/comment.controller';
     TagService,
     CommentService,
     CommentSubsriber,
+    RepostService,
     LikeService,
   ],
-  controllers: [ContentController, commentController, TagController],
+  controllers: [
+    ContentController,
+    CommentController,
+    TagController,
+    RepostController,
+  ],
 })
 export class ContentModule {}

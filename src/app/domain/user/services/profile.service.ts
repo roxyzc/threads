@@ -196,7 +196,7 @@ export class ProfileService {
 
       const data = await findProfile.getOne();
       const response = this.responseProfile(data);
-      await this.cacheService.set(`profile=${id}`, response, 30);
+      await this.cacheService.set(`profile=${id}`, response, 180);
       return response;
     } catch (error) {
       throw error;
