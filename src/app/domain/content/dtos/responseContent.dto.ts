@@ -5,6 +5,7 @@ import { Tag } from 'src/app/entities/tag.entity';
 import { User } from 'src/app/entities/user.entity';
 import { Like } from 'src/app/entities/likes.entity';
 import { Comment } from 'src/app/entities/comment.entity';
+import { Repost } from 'src/app/entities/repost.entity';
 
 type ReplyItem = {
   id: string;
@@ -52,6 +53,9 @@ export class ResponseContent {
   status: STATUS_CONTENT;
   username: string;
   fullName: string;
+
+  @Exclude()
+  reposts?: Repost[];
 
   @Exclude()
   likes?: Like[];
