@@ -223,6 +223,7 @@ export class ContentService {
           images: content.images.map((image) => image.url),
           hastags: content.tags.map((tag) => tag.name),
         },
+        username: content.user.username,
         isLiked: content.likes?.some((like) => like.userId === userId) ?? false,
         isVerified: content.user?.profile.isVerified ?? false,
         IsReposted:
