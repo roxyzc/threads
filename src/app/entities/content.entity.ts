@@ -51,10 +51,10 @@ export class Content {
   @JoinTable({
     name: 'content_tags',
   })
-  tags: Tag[];
+  tags?: Tag[];
 
   @OneToMany(() => Comment, (comment) => comment.content)
-  comments: Comment[];
+  comments?: Comment[];
 
   @OneToMany(() => Like, (like) => like.content)
   likes?: Like[];

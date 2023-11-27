@@ -101,15 +101,6 @@ export class ProfileService {
     });
   }
 
-  private async getPhotoProfile(fileId: string) {
-    try {
-      const url = `https://drive.google.com/uc?export=view&id=${fileId}`;
-      return url;
-    } catch (error) {
-      throw error;
-    }
-  }
-
   public async sendPhotoProfile(file: Express.Multer.File, userId: string) {
     let fileId: string;
 
@@ -128,7 +119,7 @@ export class ProfileService {
           }
 
           fileId = await this.gdriveService.saveFile(file, folder.id);
-          const url = await this.getPhotoProfile(fileId);
+          const url = await this.gdriveService.getFileUrl(fileId);
           const createImage = entityManager.create(ImageProfile, {
             fileId,
             url,

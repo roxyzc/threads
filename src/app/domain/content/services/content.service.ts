@@ -13,6 +13,7 @@ import { ResponseContent } from '../dtos/responseContent.dto';
 import { STATUS_PROFILE } from 'src/app/entities/profile.entity';
 import { LikeService } from './like.service';
 import { Tag } from 'src/app/entities/tag.entity';
+import { STATUS_COMMENT } from 'src/app/entities/comment.entity';
 
 interface ICreateContent {
   content?: string;
@@ -161,11 +162,20 @@ export class ContentService {
   private async queryContentByContentId(contentId: string, userId: string) {
     const data = await this.queryContent(userId)
       .leftJoinAndSelect('comment.likes', 'clikes')
-      .leftJoinAndSelect('comment.replies', 'replies')
-      .where('content.contentId = :contentId AND content.userId = :userId', {
-        contentId,
-        userId,
-      })
+      .leftJoinAndSelect(
+        'comment.replies',
+        'replies',
+        'replies.status <> :status',
+        { status: STATUS_COMMENT.deleted },
+      )
+      .where(
+        'content.contentId = :contentId AND content.userId = :userId AND content.status <> :status',
+        {
+          contentId,
+          userId,
+          status: STATUS_CONTENT.deleted,
+        },
+      )
       .orWhere(
         'content.contentId = :contentId AND content.status = :status_content AND profile.status = :status_profile',
         {
@@ -187,7 +197,8 @@ export class ContentService {
       .leftJoinAndSelect(
         'content.comments',
         'comment',
-        'comment.parentCommentCommentId IS NULL',
+        'comment.parentCommentCommentId IS NULL AND comment.status <> :status',
+        { status: STATUS_COMMENT.deleted },
       )
       .leftJoin('comment.user', 'cuser')
       .leftJoin('cuser.profile', 'cprofile')
@@ -219,7 +230,7 @@ export class ContentService {
       const responseContent = new ResponseContent({
         ...content,
         content: {
-          text: content.content,
+          text: content?.content ?? null,
           images: content.images.map((image) => image.url),
           hastags: content.tags.map((tag) => tag.name),
         },
@@ -228,22 +239,23 @@ export class ContentService {
         isVerified: content.user?.profile.isVerified ?? false,
         IsReposted:
           content.reposts?.some((repost) => repost.userId === userId) ?? false,
-        likeCount: content.likes.length,
+        likeCount: content?.likes?.length ?? 0,
         replies: includeComments
           ? content.comments.map((comment) => ({
               id: comment.commentId,
               username: comment.user.username,
-              text: comment.text,
-              likeCount: comment.likes.length,
+              text: comment?.text ?? null,
+              likeCount: comment?.likes?.length ?? 0,
+              status: comment.status,
               isLiked:
                 comment.likes?.some((like) => like.userId === userId) ?? false,
               imageProfile: comment.user?.profile?.photo?.url,
-              replies: comment.replies.length,
+              replies: comment?.replies?.length ?? 0,
               created_at: comment.createdAt,
               updated_at: comment.updatedAt,
             }))
           : {
-              count: content.comments.length,
+              count: content?.comments?.length ?? 0,
               imagesProfile: [
                 ...new Set(
                   content?.comments?.map(
@@ -379,6 +391,19 @@ export class ContentService {
     }
   }
 
+  private queryGetContentByIdAndUserId(contentId: string, userId: string) {
+    return this.contentRepository
+      .createQueryBuilder()
+      .where(
+        'userId = :userId AND contentId = :contentId AND status <> :status',
+        {
+          userId,
+          contentId,
+          status: STATUS_CONTENT.deleted,
+        },
+      );
+  }
+
   public async updateContent(
     userId: string,
     contentId: string,
@@ -386,10 +411,10 @@ export class ContentService {
   ) {
     try {
       await this.entityManager.transaction(async (entityManager) => {
-        const findContent = await this.contentRepository
-          .createQueryBuilder()
-          .where('userId = :userId', { userId })
-          .andWhere('contentId = :contentId', { contentId })
+        const findContent = await this.queryGetContentByIdAndUserId(
+          contentId,
+          userId,
+        )
           .setLock('pessimistic_write')
           .getRawOne();
 
@@ -413,11 +438,10 @@ export class ContentService {
 
   public async deleteContent(userId: string, contentId: string) {
     try {
-      const findContent = await this.contentRepository
-        .createQueryBuilder()
-        .where('userId = :userId', { userId })
-        .andWhere('contentId = :contentId', { contentId })
-        .getRawOne();
+      const findContent = await this.queryGetContentByIdAndUserId(
+        contentId,
+        userId,
+      ).getRawOne();
 
       if (!findContent) {
         throw new NotFoundException('Content not found');
@@ -433,13 +457,21 @@ export class ContentService {
     }
   }
 
+  private queryGetContentById(contentId: string) {
+    return this.contentRepository
+      .createQueryBuilder('content')
+      .where('content.contentId = :contentId AND content.status <> :status', {
+        contentId,
+        status: STATUS_CONTENT.deleted,
+      });
+  }
+
   public async likeContent(contentId: string, userId: string) {
     try {
-      const content = await this.contentRepository
-        .createQueryBuilder('content')
-        .where('contentId = :contentId', { contentId })
-        .getOne();
-
+      const content = await this.queryGetContentById(contentId).getOne();
+      if (!content) {
+        throw new NotFoundException('Content not found');
+      }
       return await this.likeService.likeContent(content, userId);
     } catch (error) {
       throw error;
@@ -448,13 +480,7 @@ export class ContentService {
 
   public async getContentById(contentId: string): Promise<Content> {
     try {
-      const content = await this.contentRepository
-        .createQueryBuilder('content')
-        .where('content.contentId = :contentId AND content.status <> :status', {
-          contentId,
-          status: STATUS_CONTENT.deleted,
-        })
-        .getOne();
+      const content = await this.queryGetContentById(contentId).getOne();
 
       if (!content) {
         throw new NotFoundException('Content not found');
@@ -468,14 +494,7 @@ export class ContentService {
 
   public async doesContentExist(contentId: string): Promise<boolean> {
     try {
-      const content = await this.contentRepository
-        .createQueryBuilder('content')
-        .where('content.contentId = :contentId AND content.status <> :status', {
-          contentId,
-          status: STATUS_CONTENT.deleted,
-        })
-        .getExists();
-
+      const content = await this.queryGetContentById(contentId).getExists();
       return content;
     } catch (error) {
       throw error;

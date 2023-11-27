@@ -84,8 +84,15 @@ export class CommentService {
 
   private queryCommentById(commentId: string) {
     return this.queryComment()
-      .where('comment.commentId = :commentId', { commentId })
-      .leftJoinAndSelect('comment.content', 'c');
+      .leftJoinAndSelect('comment.content', 'content')
+      .where(
+        'comment.commentId = :commentId AND comment.status <> :status_comment AND content.status <> :status_content',
+        {
+          commentId,
+          status_comment: STATUS_COMMENT.deleted,
+          status_content: STATUS_CONTENT.deleted,
+        },
+      );
   }
 
   private mapResponseComment(data: Comment[], userId: string) {
@@ -93,21 +100,22 @@ export class CommentService {
       (comment) =>
         new ResponseCommentDto({
           ...comment,
-          likeCount: comment.likes.length ?? 0,
+          likeCount: comment?.likes?.length ?? 0,
           isLiked:
-            comment.likes?.some((like) => like.userId === userId) ?? false,
+            comment?.likes?.some((like) => like.userId === userId) ?? false,
           username: comment.user.username,
-          imageProfile: comment.user?.profile?.photo.url,
+          imageProfile: comment.user?.profile?.photo.url ?? null,
           createdAt: comment.createdAt,
           updatedAt: comment.updatedAt,
           replies_comment: comment.replies.map((replies) => {
             return {
               id: replies.commentId,
-              text: replies.text,
+              text: replies?.text ?? null,
               username: replies.user.username,
+              status: replies.status,
               isLiked:
                 replies.likes?.some((like) => like.userId === userId) ?? false,
-              imageProfile: replies.user?.profile?.photo.url,
+              imageProfile: replies.user?.profile?.photo.url ?? null,
               likeCount: replies?.likes?.length ?? 0,
               repliesCount: replies?.replies?.length ?? 0,
               created_at: replies.createdAt,
@@ -122,8 +130,20 @@ export class CommentService {
     try {
       const comment = await this.queryCommentById(commentId)
         .leftJoinAndSelect('comment.likes', 'like')
-        .leftJoinAndSelect('comment.replies', 'replies')
-        .leftJoinAndSelect('replies.replies', 'replies_replies')
+        .leftJoinAndSelect(
+          'comment.replies',
+          'replies',
+          'replies.status <> :status',
+          {
+            status: STATUS_COMMENT.deleted,
+          },
+        )
+        .leftJoinAndSelect(
+          'replies.replies',
+          'replies_replies',
+          'replies_replies.status <> :status',
+          { status: STATUS_COMMENT.deleted },
+        )
         .leftJoin('comment.user', 'user')
         .leftJoin('user.profile', 'profile')
         .leftJoin('profile.photo', 'photoProfile')
@@ -140,6 +160,10 @@ export class CommentService {
         ])
         .getOne();
 
+      if (!comment) {
+        throw new NotFoundException('Comment not found');
+      }
+
       const filter_data = this.mapResponseComment([comment], userId);
 
       return filter_data;
@@ -151,25 +175,40 @@ export class CommentService {
 
   public async updateComment({ commentId, userId, text }: IUpdateComment) {
     try {
-      const findComment = await this.queryComment()
-        .where('comment.commentId = :commentId AND comment.user = :userId', {
-          commentId,
-          userId,
-        })
-        .getOne();
+      await this.entityManager.transaction(async (entityManager) => {
+        const findComment = await this.queryComment()
+          .leftJoinAndSelect('comment.content', 'content')
+          .where(
+            'comment.commentId = :commentId AND comment.user = :userId AND comment.status <> :status',
+            {
+              commentId,
+              userId,
+              status: STATUS_COMMENT.deleted,
+            },
+          )
+          .useTransaction(true)
+          .setLock('pessimistic_write')
+          .getOne();
 
-      if (!findComment) {
-        throw new NotFoundException('comment not found');
-      }
+        if (!findComment) {
+          throw new NotFoundException('comment not found');
+        }
 
-      if (
-        findComment.updatedAt >
-        new Date().getTime() - THIRTY_MINUTES_IN_MILLISECONDS
-      ) {
-        throw new BadRequestException();
-      }
+        if (findComment.content.status === STATUS_CONTENT.deleted) {
+          throw new NotFoundException(
+            'Comment has been deleted and cannot be updated.',
+          );
+        }
 
-      await this.entityManager.update(Comment, { commentId }, { text });
+        const expiredAt = new Date().getTime() - THIRTY_MINUTES_IN_MILLISECONDS;
+        if (findComment.createdAt < expiredAt) {
+          throw new BadRequestException(
+            'Cannot update comment within thirty minutes of the last update.',
+          );
+        }
+
+        await entityManager.update(Comment, { commentId }, { text });
+      });
     } catch (error) {
       this.logger.error(error.message);
       throw error;
@@ -180,10 +219,6 @@ export class CommentService {
     try {
       const user = await this.getUser(userId);
       const content = await this.contentService.getContentById(contentId);
-      if (content.status === STATUS_CONTENT.deleted) {
-        throw new BadRequestException();
-      }
-
       await this.createContent({ content, user, text });
     } catch (error) {
       throw error;
@@ -201,15 +236,7 @@ export class CommentService {
       if (!comment) {
         throw new NotFoundException('comment not found');
       }
-
       const content = comment.content;
-      if (
-        content.status === STATUS_CONTENT.deleted ||
-        comment.status === STATUS_COMMENT.deleted
-      ) {
-        throw new BadRequestException();
-      }
-
       await this.createContent({
         text,
         user,
@@ -222,12 +249,24 @@ export class CommentService {
     }
   }
 
-  public async likeContent(commentId: string, userId: string) {
+  public async likeComment(commentId: string, userId: string) {
     try {
       const content = await this.commentRepository
         .createQueryBuilder('comment')
-        .where('comment.commentId = :commentId', { commentId })
+        .leftJoinAndSelect('comment.content', 'content')
+        .where(
+          'comment.commentId = :commentId AND comment.status <> :status_comment AND content.status <> :status_content',
+          {
+            commentId,
+            status_comment: STATUS_COMMENT.deleted,
+            status_content: STATUS_CONTENT.deleted,
+          },
+        )
         .getOne();
+
+      if (!content) {
+        throw new NotFoundException('Content not found');
+      }
 
       return await this.likeService.likeContent(content, userId);
     } catch (error) {

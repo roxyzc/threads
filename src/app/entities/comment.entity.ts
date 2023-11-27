@@ -20,20 +20,20 @@ export class Comment {
   @PrimaryGeneratedColumn('uuid')
   commentId: string;
 
-  @Column()
+  @Column({ nullable: true, type: 'varchar', length: 500 })
   text: string;
 
   @ManyToOne(() => User)
   user: User;
 
   @OneToMany(() => Comment, (comment) => comment.parentComment)
-  replies: Comment[];
+  replies?: Comment[];
 
   @OneToMany(() => Like, (like) => like.comment)
-  likes: Like[];
+  likes?: Like[];
 
   @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true })
-  parentComment: Comment;
+  parentComment?: Comment;
 
   @ManyToOne(() => Content, (content) => content.comments, {
     cascade: true,

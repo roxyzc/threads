@@ -85,7 +85,7 @@ export class CommentController {
     @Query('comment_id', ParseUUIDPipe) commentId: string,
     @Query('user_id', ParseUUIDPipe) userId: string,
   ): Promise<HttpResponse & { add: boolean; delete: boolean }> {
-    const data = await this.commentService.likeContent(commentId, userId);
+    const data = await this.commentService.likeComment(commentId, userId);
     return {
       ...data,
       statusCode: HttpStatus.OK,
