@@ -176,25 +176,55 @@ export class CommentService {
   public async updateComment({ commentId, userId, text }: IUpdateComment) {
     try {
       await this.entityManager.transaction(async (entityManager) => {
-        const findComment = await this.queryComment()
-          .leftJoinAndSelect('comment.content', 'content')
-          .where(
-            'comment.commentId = :commentId AND comment.user = :userId AND comment.status <> :status',
-            {
-              commentId,
-              userId,
-              status: STATUS_COMMENT.deleted,
-            },
+        const findComment = await entityManager.query(
+          `WITH RECURSIVE CommentHierarchy AS (
+            SELECT
+              c.*,
+              1 as depth
+            FROM
+              comment as c
+            WHERE
+              c.commentId = ? AND c.userUserId = ? AND c.status <> ?
+            UNION ALL
+            SELECT
+              c.*,
+              ch.depth + 1
+            FROM
+              comment c
+            JOIN
+              CommentHierarchy as ch ON ch.parentCommentCommentId = c.commentId
+            WHERE
+              (c.parentCommentCommentId IS NOT NULL AND c.status <> ?) OR (c.parentCommentCommentId IS NULL)
           )
-          .useTransaction(true)
-          .setLock('pessimistic_write')
-          .getOne();
+          SELECT 
+          CommentHierarchy.*,
+          content.status as contentStatus,
+          COALESCE(
+            (
+              SELECT co.status 
+              FROM CommentHierarchy JOIN Comment as co ON CommentHierarchy.parentCommentCommentId = co.commentId
+              WHERE CommentHierarchy.depth = (SELECT MAX(depth) FROM CommentHierarchy) AND CommentHierarchy.parentCommentCommentId IS NOT NULL
+            ),
+            (
+              SELECT CommentHierarchy.status 
+              FROM CommentHierarchy 
+              WHERE CommentHierarchy.depth = (SELECT MAX(depth) FROM CommentHierarchy)
+                AND CommentHierarchy.parentCommentCommentId IS NULL
+            )
+          ) as status_depth_max
+          FROM CommentHierarchy
+          JOIN Content as content ON CommentHierarchy.content = content.contentId
+          WHERE CommentHierarchy.depth = 1 
+          FOR UPDATE;
+          `,
+          [commentId, userId, STATUS_COMMENT.deleted, STATUS_COMMENT.deleted],
+        );
 
         if (!findComment) {
           throw new NotFoundException('comment not found');
         }
 
-        if (findComment.content.status === STATUS_CONTENT.deleted) {
+        if (findComment[0].status_depth_max === STATUS_CONTENT.deleted) {
           throw new NotFoundException(
             'Comment has been deleted and cannot be updated.',
           );
@@ -206,7 +236,6 @@ export class CommentService {
             'Cannot update comment within thirty minutes of the last update.',
           );
         }
-
         await entityManager.update(Comment, { commentId }, { text });
       });
     } catch (error) {
