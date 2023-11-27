@@ -72,13 +72,13 @@ export class GdriveService {
 
   public async getFileUrl(fileId: string): Promise<string> {
     try {
-      const response = await this.driveClient.files.get({
-        fileId,
-        fields: 'webViewLink',
-      });
+      // const response = await this.driveClient.files.get({
+      //   fileId,
+      //   fields: 'webViewLink',
+      // });
 
-      const imageUrl = response.data.webViewLink;
-      return imageUrl;
+      // const imageUrl = response.data.webViewLink;
+      return `https://drive.google.com/uc?export=view&id=${fileId}`;
     } catch (error) {
       throw new BadRequestException(error.message);
     }

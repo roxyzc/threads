@@ -103,7 +103,7 @@ export class ProfileService {
 
   private async getPhotoProfile(fileId: string) {
     try {
-      const url = `https://drive.google.com/uc?id=${fileId}`;
+      const url = `https://drive.google.com/uc?export=view&id=${fileId}`;
       return url;
     } catch (error) {
       throw error;
