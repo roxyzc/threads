@@ -23,7 +23,11 @@ export class Comment {
   @Column({ nullable: true, type: 'varchar', length: 500 })
   text: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, {
+    cascade: true,
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
+  })
   user: User;
 
   @OneToMany(() => Comment, (comment) => comment.parentComment)
@@ -32,7 +36,12 @@ export class Comment {
   @OneToMany(() => Like, (like) => like.comment)
   likes?: Like[];
 
-  @ManyToOne(() => Comment, (comment) => comment.replies, { nullable: true })
+  @ManyToOne(() => Comment, (comment) => comment.replies, {
+    nullable: true,
+    cascade: true,
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
+  })
   parentComment?: Comment;
 
   @ManyToOne(() => Content, (content) => content.comments, {

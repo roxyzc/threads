@@ -49,7 +49,7 @@ export class CommentService {
 
   private async getUser(userId: string) {
     try {
-      const user = await this.userService.getByUserId(userId, [
+      const user = await this.userService.getUser(userId, [
         'user.userId',
         'user.username',
         'user.email',

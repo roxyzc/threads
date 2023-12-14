@@ -11,6 +11,7 @@ import { EntityManager } from 'typeorm';
 import { User, UserActive } from 'src/app/entities/user.entity';
 import { comparePassword, hash } from 'src/app/utils/hash.util';
 import { UserService } from '../../user/services/user.service';
+import { Followship } from 'src/app/entities/followship.entity';
 
 @Injectable({ scope: Scope.DEFAULT })
 export class VerifyService {
@@ -39,11 +40,20 @@ export class VerifyService {
         throw new GoneException('Verify expired');
       }
 
-      await this.entityManager.update(
-        User,
-        { email: payload.email },
-        { active: UserActive.ACTIVE },
-      );
+      await this.entityManager.transaction(async (entityManager) => {
+        const createFollower = entityManager.create(Followship, {
+          userId: findUser.userId,
+        });
+        await Promise.all([
+          entityManager.save(createFollower),
+          entityManager.update(
+            User,
+            { email: payload.email },
+            { active: UserActive.ACTIVE },
+          ),
+        ]);
+        return;
+      });
     } catch (error) {
       throw error;
     }

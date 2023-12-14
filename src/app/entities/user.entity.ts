@@ -7,6 +7,7 @@ import {
 } from 'typeorm';
 import { Token } from './token.entity';
 import { Profile } from './profile.entity';
+import { Followship } from './followship.entity';
 
 export enum UserRoles {
   ADMIN = 'ADMIN',
@@ -44,6 +45,9 @@ export class User {
 
   @OneToOne(() => Profile, (profile) => profile.user)
   profile: Profile;
+
+  @OneToOne(() => Followship, (followship) => followship.user)
+  followship: Followship;
 
   @Column({ type: 'bigint', nullable: true, unsigned: true })
   createdAt: number;

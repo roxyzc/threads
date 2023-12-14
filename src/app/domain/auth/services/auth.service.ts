@@ -214,7 +214,7 @@ export class AuthService {
       if (cachedData) {
         return new ResponseAuthRaw(cachedData);
       }
-      const user = await this.userService.getByUserId(userId, [
+      const user = await this.userService.getUser(userId, [
         'user.userId',
         'user.username',
         'user.email',

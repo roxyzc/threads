@@ -4,9 +4,11 @@ import {
   PrimaryGeneratedColumn,
   ManyToOne,
   JoinColumn,
+  OneToOne,
 } from 'typeorm';
 import { Content } from './content.entity';
 import { Comment } from './comment.entity';
+import { User } from './user.entity';
 
 @Entity()
 export class Like {
@@ -29,4 +31,12 @@ export class Like {
   @ManyToOne(() => Comment, { onDelete: 'CASCADE', onUpdate: 'CASCADE' })
   @JoinColumn({ name: 'commentId', referencedColumnName: 'commentId' })
   comment: Comment;
+
+  @OneToOne(() => User, {
+    cascade: true,
+    onUpdate: 'CASCADE',
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'userId', referencedColumnName: 'userId' })
+  user: User;
 }

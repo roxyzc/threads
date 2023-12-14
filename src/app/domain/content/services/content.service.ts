@@ -201,18 +201,21 @@ export class ContentService {
         { status: STATUS_COMMENT.deleted },
       )
       .leftJoin('comment.user', 'cuser')
+      .leftJoin('cuser.follower', 'cfollower')
       .leftJoin('cuser.profile', 'cprofile')
       .leftJoin('cprofile.photo', 'cphotoProfile')
       .leftJoin('content.reposts', 'repost', 'repost.userId = :userId', {
         userId,
       })
       .leftJoin('content.user', 'user')
+      .leftJoin('user.follower', 'follower')
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'photoProfile')
       .addSelect([
         'user.username',
         'profile.profileId',
-        'profile.isVerified',
+        'follower.isVerified',
+        'cfollower.isVerified',
         'photoProfile.url',
         'cuser.username',
         'cprofile.profileId',
@@ -236,7 +239,7 @@ export class ContentService {
         },
         username: content.user.username,
         isLiked: content.likes?.some((like) => like.userId === userId) ?? false,
-        isVerified: content.user?.profile.isVerified ?? false,
+        isVerified: content.user?.followship?.isVerified ?? false,
         IsReposted:
           content.reposts?.some((repost) => repost.userId === userId) ?? false,
         likeCount: content?.likes?.length ?? 0,
@@ -245,6 +248,7 @@ export class ContentService {
               id: comment.commentId,
               username: comment.user.username,
               text: comment?.text ?? null,
+              isVerified: content.user?.followship?.isVerified ?? false,
               likeCount: comment?.likes?.length ?? 0,
               status: comment.status,
               isLiked:

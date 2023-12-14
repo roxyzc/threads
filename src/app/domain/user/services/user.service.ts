@@ -32,12 +32,21 @@ export class UserService {
     return findUser;
   }
 
-  public async getByUserId(userId: string, select?: string[]): Promise<User> {
-    const selectColumns = select;
-    const user = this.userRepository
+  private queryUserId(userId: string) {
+    return this.userRepository
       .createQueryBuilder('user')
       .where('user.userId = :userId', { userId });
+  }
 
+  public async getUserById(userId) {
+    return this.queryUserId(userId)
+      .select(['user.userId', 'user.username', 'user.email'])
+      .getOne();
+  }
+
+  public async getUser(userId: string, select?: string[]): Promise<User> {
+    const selectColumns = select;
+    const user = this.queryUserId(userId);
     if (selectColumns && selectColumns.length > 0) {
       user.select(selectColumns);
     } else {
@@ -58,7 +67,7 @@ export class UserService {
   }
 
   public async getUserByUsernameOrEmail(
-    { email, username }: { email: string; username?: string },
+    { email, username }: { email?: string; username?: string },
     select?: string[],
     raw = false,
   ): Promise<User> {
