@@ -201,14 +201,14 @@ export class ContentService {
         { status: STATUS_COMMENT.deleted },
       )
       .leftJoin('comment.user', 'cuser')
-      .leftJoin('cuser.follower', 'cfollower')
+      .leftJoin('cuser.followship', 'cfollower')
       .leftJoin('cuser.profile', 'cprofile')
       .leftJoin('cprofile.photo', 'cphotoProfile')
       .leftJoin('content.reposts', 'repost', 'repost.userId = :userId', {
         userId,
       })
       .leftJoin('content.user', 'user')
-      .leftJoin('user.follower', 'follower')
+      .leftJoin('user.followship', 'follower')
       .leftJoin('user.profile', 'profile')
       .leftJoin('profile.photo', 'photoProfile')
       .addSelect([

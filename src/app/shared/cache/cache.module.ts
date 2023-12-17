@@ -16,7 +16,7 @@ import { CacheService } from './cache.service';
             commandsQueueMaxLength: 10_000,
             password: configService.get('redis.password'),
             socket: {
-              tls: true,
+              // tls: true,
               host: configService.get('redis.host'),
               port: Number(configService.get('redis.port')),
             },
