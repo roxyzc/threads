@@ -309,8 +309,9 @@ export class ContentService {
     search: string,
   ) {
     try {
+      const query = this.queryContent(userId);
       const { count, data, limit_item, start } = await this.queryAllContent(
-        this.queryContent(userId),
+        query,
         limit,
         page,
         latest,

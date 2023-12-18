@@ -35,6 +35,17 @@ export class AuthService {
     private readonly cacheService: CacheService,
   ) {}
 
+  // private async lazyModule() {
+  //   if (!this.mailModuleRef) {
+  //     const { MailModule } = await import('../../../shared/mail/mail.module');
+  //     this.mailModuleRef = await this.lazyModuleLoader.load(() => MailModule);
+  //   }
+
+  //   const { MailService } = await import('../../../shared/mail/mail.service');
+  //   const mailService = this.mailModuleRef.get(MailService);
+  //   return { mailService };
+  // }
+
   public async signup({
     username,
     email,

@@ -8,7 +8,7 @@ import { Followship } from 'src/app/entities/followship.entity';
 import { EntityManager, Repository } from 'typeorm';
 import { UserService } from './user.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { User } from 'src/app/entities/user.entity';
+import { User, UserActive } from 'src/app/entities/user.entity';
 
 type TField = 'followed' | 'follower';
 type TAction = 'follow' | 'unfollow';
@@ -35,7 +35,7 @@ export class FollowshipService {
         .leftJoin('followship.follower', 'follower')
         .leftJoin('followship.followed', 'followed')
         .addSelect(['follower.userId', 'followed.userId'])
-        .where(`followship.userId = :userId FORUPDATE`, {
+        .where(`followship.userId = :userId FOR UPDATE`, {
           userId: follower.userId,
         })
         .getOne();
@@ -86,6 +86,12 @@ export class FollowshipService {
         );
       }
 
+      if (target.active === UserActive.INACTIVE) {
+        throw new BadRequestException(
+          `User with username ${usernameTarget} is not active`,
+        );
+      }
+
       return target;
     } catch (error) {
       throw error;
@@ -126,6 +132,7 @@ export class FollowshipService {
         await this.updateFollowship(follower, target, 'follower', action),
       ]);
     } catch (error) {
+      console.log(error.message);
       throw error;
     }
   }
