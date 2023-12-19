@@ -22,8 +22,7 @@ export function IsValidationArray(validationOptions?: ValidationOptions) {
 
           if (
             value.name !== undefined &&
-            (!validator.isAlphanumeric(validator.blacklist(value.name, ' ')) ||
-              validator.trim(value.name).replace(/\s+/g, ' ') !== value.name)
+            validator.trim(value.name).replace(/\s+/g, ' ') !== value.name
           ) {
             return false;
           }
@@ -33,7 +32,7 @@ export function IsValidationArray(validationOptions?: ValidationOptions) {
         defaultMessage(object: ValidationArguments) {
           return (
             (object.object as any)[`${object.property}_error`] ||
-            `${propertyName} should only contain letters and numbers (a-z, A-Z, 0-9)`
+            `${propertyName} don't use spaces twice on this value`
           );
         },
       },

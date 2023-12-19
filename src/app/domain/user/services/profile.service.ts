@@ -3,6 +3,7 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import {
   GENDER,
@@ -139,6 +140,11 @@ export class ProfileService {
       return data;
     } catch (error) {
       await this.gdriveService.deleteFile(fileId);
+
+      if (error.message === 'invalid_grant') {
+        throw new UnauthorizedException('token gdrive expired');
+      }
+
       throw error;
     }
   }
@@ -147,6 +153,10 @@ export class ProfileService {
     try {
       await this.gdriveService.updateFile(file, fileId);
     } catch (error) {
+      if (error.message === 'invalid_grant') {
+        throw new UnauthorizedException('token gdrive expired');
+      }
+
       throw error;
     }
   }
@@ -160,6 +170,10 @@ export class ProfileService {
       });
       return;
     } catch (error) {
+      if (error.message === 'invalid_grant') {
+        throw new UnauthorizedException('token gdrive expired');
+      }
+
       throw error;
     }
   }

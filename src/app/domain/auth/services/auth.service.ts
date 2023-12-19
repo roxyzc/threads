@@ -69,7 +69,10 @@ export class AuthService {
             password,
           });
 
-          const verificationToken = await this.generateVerificationToken(email);
+          const verificationToken = await this.generateVerificationToken(
+            email,
+            'sendVerifyUser',
+          );
           await this.mailService.sendVerifyUser(email, verificationToken);
           await entityManager.save(createUser);
         });
@@ -159,7 +162,10 @@ export class AuthService {
       }
 
       await this.cacheService.set(cooldownKey, 'cooldown', 180);
-      const verificationToken = await this.generateVerificationToken(email);
+      const verificationToken = await this.generateVerificationToken(
+        email,
+        emailType,
+      );
 
       switch (emailType) {
         case 'sendResetPassword':
@@ -309,10 +315,11 @@ export class AuthService {
     await this.entityManager.save(token);
   }
 
-  private async generateVerificationToken(email: string) {
+  private async generateVerificationToken(email: string, type: string) {
     const expirationTime = new Date().getTime() + 300000;
     const payload = {
       email,
+      type,
       expiredAt: expirationTime,
     };
     const data = JSON.stringify(payload);

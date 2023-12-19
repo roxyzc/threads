@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { EntityManager, Repository, SelectQueryBuilder } from 'typeorm';
 import { Content, STATUS_CONTENT } from 'src/app/entities/content.entity';
@@ -391,6 +392,10 @@ export class ContentService {
         for (const id of fileId) {
           await this.gdriveService.deleteFile(id);
         }
+      }
+
+      if (error.message === 'invalid_grant') {
+        throw new UnauthorizedException('token gdrive expired');
       }
       throw error;
     }

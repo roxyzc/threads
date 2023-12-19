@@ -6,6 +6,7 @@ import {
   GoneException,
   ConflictException,
   Scope,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { EntityManager } from 'typeorm';
 import { User, UserActive } from 'src/app/entities/user.entity';
@@ -20,7 +21,11 @@ export class VerifyService {
     private readonly userService: UserService,
   ) {}
 
-  async verifyUser(payload: { email: string; expiredAt: number }) {
+  async verifyUser(payload: {
+    email: string;
+    type: string;
+    expiredAt: number;
+  }) {
     const currentTime = new Date().getTime();
     try {
       const findUser = await this.userService.getUserByUsernameOrEmail(
@@ -34,6 +39,10 @@ export class VerifyService {
 
       if (findUser.active === UserActive.ACTIVE) {
         throw new BadRequestException('The user is already active');
+      }
+
+      if (payload.type !== 'sendVerifyUser') {
+        throw new UnauthorizedException('Token ilegal');
       }
 
       if (payload.expiredAt <= currentTime) {
@@ -63,9 +72,11 @@ export class VerifyService {
     newPassword: string,
     payload: {
       email: string;
-      expiredAt: string;
+      type: string;
+      expiredAt: number;
     },
   ): Promise<void> {
+    const currentTime = new Date().getTime();
     try {
       await this.entityManager.transaction(async (entityManager) => {
         const findUser = await entityManager
@@ -82,6 +93,14 @@ export class VerifyService {
 
         if (findUser.active === UserActive.INACTIVE) {
           throw new ForbiddenException('User is inactive');
+        }
+
+        if (payload.type !== 'sendResetPassword') {
+          throw new UnauthorizedException('Token ilegal');
+        }
+
+        if (payload.expiredAt <= currentTime) {
+          throw new GoneException('Verify expired');
         }
 
         const isMatch = await comparePassword(newPassword, findUser.password);

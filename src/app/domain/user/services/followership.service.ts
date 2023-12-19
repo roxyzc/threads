@@ -9,6 +9,7 @@ import { EntityManager, Repository } from 'typeorm';
 import { UserService } from './user.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User, UserActive } from 'src/app/entities/user.entity';
+import { slug } from 'src/app/utils/slug.util';
 
 type TField = 'followed' | 'follower';
 type TAction = 'follow' | 'unfollow';
@@ -118,7 +119,8 @@ export class FollowshipService {
     action: TAction,
   ) {
     try {
-      const target = await this.checkTarget(username);
+      const slugUsername = slug(username);
+      const target = await this.checkTarget(slugUsername);
 
       if (target.userId === followerId) {
         throw new BadRequestException(
@@ -144,19 +146,42 @@ export class FollowshipService {
         data = await this.followshipRepository
           .createQueryBuilder('followship')
           .leftJoin('followship.followed', 'followed')
+          .leftJoin('followed.profile', 'profile')
+          .leftJoin('profile.photo', 'image')
           .leftJoin('followship.user', 'user')
           .where('user.username = :username', { username })
-          .addSelect(['followed.username', 'user.username'])
+          .addSelect([
+            'followed.username',
+            'user.username',
+            'profile.fullName',
+            'image.url',
+          ])
+          .limit(100)
           .getOne();
+
+        // data = await this.entityManager.query(
+        //   `
+        //     SELECT f.*, u.username, fus.username as followed_username FROM followship AS f JOIN user AS u ON u.userId = f.userId JOIN followed_user as fu ON f.followerId = fu.followshipFollowerId JOIN user as fus ON fu.userUserId = fus.userId WHERE u.username = ?
+        //   `,
+        //   [username],
+        // );
       }
 
       if (action === 'follower') {
         data = await this.followshipRepository
           .createQueryBuilder('followship')
           .leftJoin('followship.follower', 'follower')
+          .leftJoin('follower.profile', 'profile')
+          .leftJoin('profile.photo', 'image')
           .leftJoin('followship.user', 'user')
           .where('user.username = :username', { username })
-          .addSelect(['follower.username', 'user.username'])
+          .addSelect([
+            'follower.username',
+            'user.username',
+            'profile.fullName',
+            'image.url',
+          ])
+          .limit(100)
           .getOne();
       }
 
@@ -166,6 +191,7 @@ export class FollowshipService {
 
       return data[action];
     } catch (error) {
+      console.error(error.message);
       throw error;
     }
   }
